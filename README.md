@@ -13,7 +13,7 @@
   <img src="https://img.shields.io/badge/Dev-Tarquitet-orange?style=for-the-badge" />
 </p>
 
-A comprehensive management system for resources, inventories, and territorial borders designed for military roleplay simulations. Built with a tactical aesthetic inspired by 90s classic command consoles.
+A comprehensive management system for resources, inventories, and territorial borders designed for **War Thunder Soshy's Server**. Built with a tactical aesthetic inspired by 90s classic command consoles.
 
 <div align="center">
   <table border="0">
@@ -30,8 +30,14 @@ A comprehensive management system for resources, inventories, and territorial bo
 
 ## 🛰️ Live Deployment
 
-The system is currently operational at the following network sector:
+The system is currently operational at:
 🔗 **[SOHYS MILITAR RP - Operation Server](https://sohysmilitarrp.infinityfree.me/index.php)**
+
+## 💬 Community & Roleplay
+
+**War Thunder Soshy's Server**
+A War Thunder server featuring a fictional war between nations with Battle Rating (BR) increases over time. Join us to share and have fun in a world of fictional conflict with unique nations and lore shaped by its own players.
+🎮 **[Join our Discord](https://discord.gg/xXMjukyw)**
 
 ---
 
@@ -49,12 +55,6 @@ The system is currently operational at the following network sector:
 - [**Store & Tech Tree**](views/lider_tienda.php): Integrated acquisition system with Fog of War.
 - [**Operational Hangar**](views/lider_inventario.php): Stock management and Fleet deployment.
 - [**Intelligence Radar**](index.php): Public faction status monitoring.
-
-## 🛠️ Technical Specs
-
-- **Hosting:** InfinityFree
-- **Stack:** PHP 8.2+ | MySQL (MariaDB) | Tailwind CSS
-- **Styling:** [Custom Military CSS Framework](assets/css/military.css)
 
 ---
 

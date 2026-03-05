@@ -13,7 +13,7 @@
   <img src="https://img.shields.io/badge/Autor-Tarquitet-orange?style=for-the-badge" />
 </p>
 
-Sistema integral de gestión de recursos, inventarios y fronteras territoriales para simulaciones de combate y roleplay militar. Diseñado con una estética táctica inspirada en consolas de mando clásicas.
+Sistema integral de gestión de recursos, inventarios y fronteras territoriales diseñado para **War Thunder Soshy's Server**. Estética táctica inspirada en las consolas de mando clásicas de los 90.
 
 <div align="center">
   <table border="0">
@@ -30,8 +30,14 @@ Sistema integral de gestión de recursos, inventarios y fronteras territoriales 
 
 ## 🛰️ Despliegue Oficial
 
-El sistema se encuentra operativo en el siguiente sector:
+El sistema se encuentra operativo en:
 🔗 **[SOHYS MILITAR RP - Servidor de Operaciones](https://sohysmilitarrp.infinityfree.me/index.php)**
+
+## 💬 Comunidad y Lore
+
+**War Thunder Soshy's Server**
+Servidor de War Thunder de guerra ficticia entre naciones con aumento de BR con el paso del tiempo. Ven a compartir y divertirte en un mundo en conflicto ficticio, con naciones únicas y lore formado por sus propios jugadores.
+🎮 **[Únete a nuestro Discord](https://discord.gg/xXMjukyw)**
 
 ---
 
@@ -49,12 +55,6 @@ El sistema se encuentra operativo en el siguiente sector:
 - [**Tienda Militar**](views/lider_tienda.php): Sistema de compras con Niebla de Guerra.
 - [**Hangar de Inventario**](views/lider_inventario.php): Control de existencias y despliegue de Flotas.
 - [**Radar Público**](index.php): Monitor de estado de facciones en tiempo real.
-
-## 🛠️ Especificaciones Técnicas
-
-- **Servidor:** InfinityFree (PHP 8.2+)
-- **Base de Datos:** MySQL (MariaDB)
-- **Frontend:** Tailwind CSS & [Military CSS Framework](assets/css/military.css)
 
 ---
 
