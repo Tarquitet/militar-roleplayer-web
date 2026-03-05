@@ -1,35 +1,56 @@
-# 🎖️ RADAR DE FACCIONES GLOBAL - Sistema de Mando Militar [Roleplay]
+# 🎖️ GLOBAL FACTION RADAR
 
-Sistema integral de gestión de recursos, inventarios y fronteras territoriales para simulaciones de combate y roleplay militar. Diseñado con una estética táctica inspirada en consolas de mando clásicas de los 90 (al menos se intentó).
+### Military Command & Tactical Management System [Roleplay]
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Status-Operational-green?style=for-the-badge&logo=opsgenie" />
+  <img src="https://img.shields.io/badge/Environment-InfinityFree-blue?style=for-the-badge&logo=php" />
+  <img src="https://img.shields.io/badge/Dev-Tarquitet-orange?style=for-the-badge" />
+</p>
+
+A comprehensive management system for resources, inventories, and territorial borders designed for military roleplay simulations. Built with a tactical aesthetic inspired by 90s classic command consoles.
 
 <div align="center">
-  <img src="images/README/1772743523519.avif" width="45%" />
-  <img src="images/README/1772743532007.avif" width="45%" />
-  <img src="images/README/1772743548358.avif" width="45%" />
-  <img src="images/README/1772743567261.avif" width="45%" />
+  <table border="0">
+    <tr>
+      <td><img src="images/README/1772743523519.avif" width="100%" alt="Dashboard Preview" /></td>
+      <td><img src="images/README/1772743532007.avif" width="100%" alt="Store Preview" /></td>
+    </tr>
+    <tr>
+      <td><img src="images/README/1772743548358.avif" width="100%" alt="Inventory Preview" /></td>
+      <td><img src="images/README/1772743567261.avif" width="100%" alt="Radar Preview" /></td>
+    </tr>
+  </table>
 </div>
 
-## 🛰️ Despliegue Oficial
+## 🛰️ Live Deployment
 
-El sistema se encuentra actualmente operativo en el siguiente sector de red:
-🔗 **[SOHYS MILITAR RP - Servidor de Operaciones](https://sohysmilitarrp.infinityfree.me/index.php)**
-
----
-
-## 🚀 Características Principales
-
-- **Mando Central (Staff):** Control total de la economía global, asignación de territorios y ejecución del Protocolo NUKE.
-- **Panel de Operaciones (Líder):** Gestión de estandarte, monitoreo de recursos (Capital, Acero, Combustible) y Radar de Inteligencia enemiga.
-- **Hangar Tecnológico:** Árbol de investigación unificado con sistema de adquisición de activos (Tanques y Aviones) con "Niebla de Guerra".
-- **Hangar Operativo:** Control de stock de unidades y despliegue de Flotas Navales en slots tácticos.
-
-## 🛠️ Requisitos Técnicos
-
-- **Hospedaje:** InfinityFree (Servicio de hosting PHP/MySQL).
-- **Lenguaje:** PHP 8.2+
-- **Base de Datos:** MySQL (MariaDB).
-- **Frontend:** Tailwind CSS & Native CSS.
+The system is currently operational at the following network sector:
+🔗 **[SOHYS MILITAR RP - Operation Server](https://sohysmilitarrp.infinityfree.me/index.php)**
 
 ---
 
-_Desarrollado por [Tarquitet](https://tarquitet.com) - 2026_
+## 🚀 System Architecture
+
+### 🗄️ Core Configuration
+
+- [**Database Connection**](config/conexion.php): Secure PDO link to MySQL.
+- [**Tactical Dictionary**](config/textos.php): Centralized string management.
+- [**Economic Config**](config/precios.php): Global asset cost arrays.
+
+### 🕹️ Operational Modules
+
+- [**Staff Command**](views/staff_dashboard.php): Global resource and jurisdiction management.
+- [**Store & Tech Tree**](views/lider_tienda.php): Integrated acquisition system with Fog of War.
+- [**Operational Hangar**](views/lider_inventario.php): Stock management and Fleet deployment.
+- [**Intelligence Radar**](index.php): Public faction status monitoring.
+
+## 🛠️ Technical Specs
+
+- **Hosting:** InfinityFree
+- **Stack:** PHP 8.2+ | MySQL (MariaDB) | Tailwind CSS
+- **Styling:** [Custom Military CSS Framework](assets/css/military.css)
+
+---
+
+_Developed by [Tarquitet](https://tarquitet.com) - 2026_
