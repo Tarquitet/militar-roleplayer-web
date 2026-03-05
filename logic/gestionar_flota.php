@@ -1,8 +1,12 @@
 <?php
 session_start();
+
+// Importamos el diccionario de textos
+$txt = require '../config/textos.php';
+
 // Validación de rango de Mando
 if (!isset($_SESSION['rol']) || $_SESSION['rol'] !== 'lider') {
-    exit("Acceso denegado: Protocolo de Seguridad Activo.");
+    exit($txt['LOGIC']['ERR_ACCESO_DENEGADO']);
 }
 
 require_once '../config/conexion.php';
@@ -46,9 +50,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         exit();
 
     } catch (PDOException $e) {
-        die("Error en la red de comunicaciones navales: " . $e->getMessage());
+        die($txt['LOGIC']['ERR_COMUNICACIONES_NAVALES'] . $e->getMessage());
     }
 } else {
     header("Location: ../views/lider_inventario.php");
     exit();
 }
+?>

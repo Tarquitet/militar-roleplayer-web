@@ -4,6 +4,9 @@ if (!isset($_SESSION['rol']) || $_SESSION['rol'] !== 'lider') exit();
 
 require_once '../config/conexion.php';
 
+// Importamos el diccionario de textos
+$txt = require '../config/textos.php';
+
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $lider_id = $_SESSION['usuario_id'];
     $item_id = (int)$_POST['catalogo_id'];
@@ -25,7 +28,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $item = $stmt_item->fetch(PDO::FETCH_ASSOC);
 
         if (!$item) {
-            throw new Exception("Activo no encontrado en los registros.");
+            // Usamos el texto centralizado para la excepción
+            throw new Exception($txt['LOGIC']['ERR_ACTIVO_NO_ENCONTRADO']);
         }
 
         // 2. Cálculo de Costo Total (Precio x Cantidad)
@@ -75,9 +79,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     } catch (Exception $e) {
         if ($pdo->inTransaction()) $pdo->rollBack();
-        die("Fallo en la cadena de suministro: " . $e->getMessage());
+        // Usamos el texto centralizado para el error crítico
+        die($txt['LOGIC']['ERR_CADENA_SUMINISTRO'] . $e->getMessage());
     }
 } else {
     header("Location: ../views/lider_tienda.php");
     exit();
 }
+?>

@@ -6,6 +6,9 @@ if (!isset($_SESSION['rol']) || $_SESSION['rol'] !== 'staff') {
 }
 require_once '../config/conexion.php';
 
+// Importamos el diccionario de textos
+$txt = require '../config/textos.php';
+
 // Cargamos los precios predefinidos
 $precios_base = require_once '../config/precios.php';
 
@@ -72,7 +75,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
 
     } catch (PDOException $e) {
-        die("Error en la base de datos: " . $e->getMessage());
+        // Usamos el texto centralizado para el error
+        die($txt['LOGIC']['ERR_DB_CATALOGO_STAFF'] . $e->getMessage());
     }
 } else {
     header("Location: ../views/staff_tienda.php");

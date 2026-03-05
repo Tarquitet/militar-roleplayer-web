@@ -1,0 +1,203 @@
+/* assets/css/military.css */
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Metamorphous&display=swap');
+
+:root {
+  --olive-drab: #3d441e;
+  --dark-olive: #2b2e1c;
+  --aoe-gold: #ffcc00;
+  --parchment: #d2c5a7;
+  --wood-border: #4a2c2a;
+}
+
+body {
+  background-color: #0d0e0a;
+  color: #e5d3b3;
+  /* Fuente similar a Times New Roman pero más legible/militar */
+  font-family: 'Crimson Pro', serif;
+  margin: 0;
+}
+
+h1,
+h2,
+h3,
+.btn-m {
+  /* Fuente para títulos y botones estilo AOE/Guerra Clásica */
+  font-family: 'Cinzel', serif;
+}
+
+/* Panel de Mando (Contenedores) */
+.m-panel {
+  background-color: var(--dark-olive);
+  border: 3px double var(--wood-border);
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8);
+}
+
+/* Botón Táctico con relieve 90s */
+.btn-m {
+  background: linear-gradient(to bottom, #5a6332, #3d441e);
+  border: 2px solid var(--wood-border);
+  color: var(--aoe-gold);
+  text-transform: uppercase;
+  font-family: 'Cinzel', serif;
+  padding: 0.5rem 1.5rem;
+  cursor: pointer;
+  box-shadow: 2px 2px 0px #000;
+  transition: all 0.1s;
+  font-weight: bold;
+  text-align: center;
+  display: inline-block;
+}
+
+.btn-m:hover {
+  filter: brightness(1.2);
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0px #000;
+}
+
+.btn-m:active {
+  transform: translate(1px, 1px);
+  box-shadow: 0px 0px 0px #000;
+}
+
+/* Tablas Técnicas */
+.table-m thead {
+  background-color: #1a1c11;
+  color: var(--aoe-gold);
+  border-bottom: 2px solid var(--wood-border);
+}
+
+.table-m tr {
+  border-bottom: 1px solid rgba(74, 44, 42, 0.3);
+}
+/* --- ESTILOS DE INPUTS TÁCTICOS --- */
+
+.m-input {
+  background-color: rgba(0, 0, 0, 0.4); /* Fondo oscuro semitransparente */
+  border: 1px solid var(--wood-border);
+  border-top: 2px solid #000; /* Sombra superior para dar profundidad */
+  border-left: 2px solid #000; /* Sombra izquierda */
+  color: var(--parchment);
+  padding: 4px 8px;
+  font-family: 'Crimson Pro', serif;
+  outline: none;
+  transition: all 0.2s;
+}
+
+/* Efecto cuando el Staff o Líder hace clic para escribir */
+.m-input:focus {
+  background-color: rgba(0, 0, 0, 0.6);
+  border-color: var(--aoe-gold);
+  box-shadow: 0 0 5px rgba(255, 204, 0, 0.3);
+  color: var(--aoe-gold);
+}
+
+/* Estilo específico para inputs numéricos de recursos */
+.input-recurso {
+  font-family: 'Cinzel', serif; /* Tono más "épico" para los números */
+  font-weight: bold;
+  font-size: 1.1rem;
+  background: none;
+  border: none;
+  border-bottom: 1px solid rgba(210, 197, 167, 0.2); /* Solo una línea base */
+  text-align: center;
+}
+
+/* Quitar las flechas por defecto de los inputs de número para que no estorben */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type='number'] {
+  -moz-appearance: textfield;
+}
+
+/* Estilo para los placeholders (el texto guía como "Nueva clave...") */
+.m-input::placeholder {
+  color: var(--parchment);
+  opacity: 0.3;
+  font-style: italic;
+  font-size: 0.8rem;
+}
+/* Esto aplicará el estilo a CUALQUIER input del sitio automáticamente */
+input[type='text'],
+input[type='number'],
+input[type='password'],
+select {
+  background-color: rgba(0, 0, 0, 0.6) !important;
+  border: 1px solid var(--wood-border) !important;
+  color: var(--parchment) !important;
+  font-family: 'Crimson Pro', serif;
+  padding: 5px;
+}
+/* Corrección para Títulos de Modales (Protocolo de Identidad) */
+.m-panel .m-title,
+#modalSeleccionNaciones .m-title,
+#modalNuke .m-title {
+  color: var(--aoe-gold) !important;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  opacity: 1 !important;
+}
+
+/* Forzar visibilidad en Tablas de Radar (Facciones Enemigas) */
+.table-m tbody tr {
+  background-color: rgba(26, 28, 17, 0.4);
+  transition: background 0.2s;
+}
+
+.table-m tbody tr:hover {
+  background-color: rgba(255, 204, 0, 0.05) !important;
+}
+
+/* Asegurar que el texto dentro de las tablas no sea opaco */
+.table-m td,
+.table-m th {
+  opacity: 1 !important;
+  color: var(--parchment);
+}
+
+/* Brillo especial para los nombres de facciones enemigas */
+.table-m td.font-bold {
+  color: var(--aoe-gold);
+  font-family: 'Cinzel', serif;
+}
+/* Sector Bloqueado (Niebla de Guerra) */
+.sector-locked {
+  filter: grayscale(1) brightness(0.3);
+  pointer-events: none; /* Evita que compren si no tienen el país */
+  position: relative;
+  overflow: hidden;
+}
+
+.sector-locked::after {
+  content: 'ZONA RESTRINGIDA';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-15deg);
+  font-family: 'Cinzel', serif;
+  color: rgba(255, 0, 0, 0.2);
+  font-size: 3rem;
+  white-space: nowrap;
+  border: 4px solid rgba(255, 0, 0, 0.1);
+  padding: 10px 40px;
+  z-index: 10;
+}
+/* Limpieza de bordes para la tabla táctica */
+.table-m {
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid var(--wood-border);
+}
+
+.table-m th,
+.table-m td {
+  border-color: rgba(74, 44, 42, 0.3) !important; /* Usamos wood-border con 30% de opacidad */
+}
+
+/* Efecto de división vertical más elegante */
+.border-r {
+  border-right-width: 1px;
+  border-right-style: solid;
+}

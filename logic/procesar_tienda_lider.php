@@ -7,6 +7,9 @@ if (!isset($_SESSION['rol']) || $_SESSION['rol'] !== 'lider') {
 }
 require_once '../config/conexion.php';
 
+// Importamos el diccionario de textos
+$txt = require '../config/textos.php';
+
 // Cargamos los precios automáticos definidos en el sistema
 $precios_base = require_once '../config/precios.php';
 
@@ -62,7 +65,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         exit();
 
     } catch (PDOException $e) {
-        die("Error crítico en el suministro del Líder: " . $e->getMessage());
+        // Usamos el texto centralizado para el error
+        die($txt['LOGIC']['ERR_CRITICO_SUMINISTRO'] . $e->getMessage());
     }
 } else {
     header("Location: ../views/lider_tienda.php");

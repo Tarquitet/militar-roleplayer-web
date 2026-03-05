@@ -1,6 +1,13 @@
 <?php
 session_start();
-if (!isset($_SESSION['rol']) || $_SESSION['rol'] !== 'lider') exit();
+
+// Importamos el diccionario de textos
+$txt = require '../config/textos.php';
+
+// Validación de rango de Mando (Líder)
+if (!isset($_SESSION['rol']) || $_SESSION['rol'] !== 'lider') {
+    exit($txt['LOGIC']['ERR_ACCESO_DENEGADO']);
+}
 
 require_once '../config/conexion.php';
 
@@ -29,7 +36,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $stmt = $pdo->prepare($query_update);
         $stmt->execute($params);
         header("Location: ../views/lider_dashboard.php?status=success");
+        exit();
     } catch (PDOException $e) {
-        die("Error de base de datos: " . $e->getMessage());
+        // Usamos el texto centralizado para el error
+        die($txt['LOGIC']['ERR_ACTUALIZAR_PERFIL'] . $e->getMessage());
     }
+} else {
+    header("Location: ../views/lider_dashboard.php");
+    exit();
 }
+?>
