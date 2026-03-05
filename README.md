@@ -3,6 +3,11 @@
 ### Military Command & Tactical Management System [Roleplay]
 
 <p align="center">
+  <a href="README.es.md"><b>🇪🇸 Ver versión en Español</b></a> | 
+  <a href="README.md"><b>🇺🇸 English Version</b></a>
+</p>
+
+<p align="center">
   <img src="https://img.shields.io/badge/Status-Operational-green?style=for-the-badge&logo=opsgenie" />
   <img src="https://img.shields.io/badge/Environment-InfinityFree-blue?style=for-the-badge&logo=php" />
   <img src="https://img.shields.io/badge/Dev-Tarquitet-orange?style=for-the-badge" />

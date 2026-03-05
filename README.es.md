@@ -3,6 +3,11 @@
 ### Sistema de Mando Militar y Gestión Táctica [Roleplay]
 
 <p align="center">
+  <a href="README.md"><b>🇺🇸 View English Version</b></a> | 
+  <a href="README.es.md"><b>🇪🇸 Versión en Español</b></a>
+</p>
+
+<p align="center">
   <img src="https://img.shields.io/badge/Estado-Operativo-green?style=for-the-badge&logo=opsgenie" />
   <img src="https://img.shields.io/badge/Hosting-InfinityFree-blue?style=for-the-badge&logo=php" />
   <img src="https://img.shields.io/badge/Autor-Tarquitet-orange?style=for-the-badge" />
