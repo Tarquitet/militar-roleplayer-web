@@ -2,10 +2,12 @@
 
 Sistema integral de gestión de recursos, inventarios y fronteras territoriales para simulaciones de combate y roleplay militar. Diseñado con una estética táctica inspirada en consolas de mando clásicas de los 90 (al menos se intentó).
 
-![imagen1](images\README\1772743523519.avif)
-![imagen2](images\README\1772743532007.avif)
-![imagen3](images\README\1772743548358.avif)
-![imagen4](images\README\1772743567261.avif)
+<div align="center">
+  <img src="images/README/1772743523519.avif" width="45%" />
+  <img src="images/README/1772743532007.avif" width="45%" />
+  <img src="images/README/1772743548358.avif" width="45%" />
+  <img src="images/README/1772743567261.avif" width="45%" />
+</div>
 
 ## 🛰️ Despliegue Oficial
 
@@ -26,8 +28,8 @@ El sistema se encuentra actualmente operativo en el siguiente sector de red:
 - **Hospedaje:** InfinityFree (Servicio de hosting PHP/MySQL).
 - **Lenguaje:** PHP 8.2+
 - **Base de Datos:** MySQL (MariaDB).
-- **Frontend:** Tailwind CSS & Custom Military CSS Framework.
+- **Frontend:** Tailwind CSS & Native CSS.
 
 ---
 
-_Desarrollado por [David Josué Pinto Gómez (Tarquitet)](https://tarquitet.com) - 2026_
+_Desarrollado por [Tarquitet](https://tarquitet.com) - 2026_
