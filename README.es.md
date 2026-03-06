@@ -39,6 +39,15 @@ Sistema integral de gestión de recursos, inventarios y jurisdicción territoria
 
 ---
 
+## 📖 Ecosistema de Documentación
+
+Para garantizar la mejor experiencia tanto para el Staff como para los Líderes de Facción, hemos desplegado dos centros de documentación:
+
+- **[GitHub Wiki](https://github.com/Tarquitet/militar-roleplayer-web/wiki/Inicio)**: El núcleo técnico y operativo del proyecto.
+- **[DeepWiki Mirror (Oficial)](https://deepwiki.com/Tarquitet/militar-roleplayer-web/1-overview)**: Versión optimizada y de alta fidelidad de la documentación técnica.
+
+---
+
 ## 🛠️ Especificaciones Técnicas y Versiones
 
 ### ⚙️ Arquitectura del Sistema

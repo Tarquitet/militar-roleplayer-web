@@ -39,6 +39,15 @@ Comprehensive system for resource management, asset inventory, and territorial j
 
 ---
 
+## 📖 Documentation Ecosystem
+
+To ensure the best experience for Command Staff and Faction Leaders, we have deployed two comprehensive documentation hubs:
+
+- **[GitHub Wiki](https://github.com/Tarquitet/militar-roleplayer-web/wiki/Inicio)**: The technical and operational core of the project.
+- **[DeepWiki Mirror](https://deepwiki.com/Tarquitet/militar-roleplayer-web/1-overview)**: A high-fidelity, optimized reading experience for the official documentation.
+
+---
+
 ## 🛠️ Technical Specifications & Versioning
 
 ### ⚙️ System Architecture
