@@ -11,6 +11,13 @@ try {
 
     $stmt_equipos = $pdo->query("SELECT nombre_equipo, bandera_url, naciones_activas FROM cuentas WHERE rol = 'lider' ORDER BY id ASC");
     $equipos = $stmt_equipos->fetchAll(PDO::FETCH_ASSOC);
+
+    // OPTIMIZACIÓN: Cierre táctico de la conexión de base de datos
+    // Permite que InfinityFree libere el proceso mientras el usuario lee la página
+    $stmt_conf = null;
+    $stmt_equipos = null;
+    $pdo = null;
+
 } catch (PDOException $e) { die("Fallo en radar: " . $e->getMessage()); }
 ?>
 <!DOCTYPE html>
@@ -99,7 +106,7 @@ try {
         </div>
     </main>
 
-    <footer class="p-10 text-center text-gray-700 text-[9px] uppercase font-bold tracking-[0.4em]">
+    <footer class="p-10 text-center text-gray-400 text-[9px] uppercase font-bold tracking-[0.4em]">
         <?php echo $txt['GLOBAL']['FOOTER_COPY']; ?>
     </footer>
 </body>

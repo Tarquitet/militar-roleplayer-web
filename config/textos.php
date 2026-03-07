@@ -273,5 +273,38 @@ return [
         'LOG_FLOTA_DESTRUIDA' => '💥 REPORTE DE COMBATE: Una flota operativa ha sido aniquilada por orden directa del Alto Mando. Objetivo: ',
         'ERR_ACTUALIZAR_RECURSOS' => 'FALLO DE SINCRONIZACIÓN EN LA TRANSFERENCIA DE RECURSOS: ',
         'ERR_ACTUALIZAR_PERFIL' => 'FALLO EN EL PROTOCOLO DE IDENTIDAD: No se pudo registrar el nuevo estandarte. ',
+    ],
+    // ---------------------------------------------------------
+    // NUEVO: SISTEMA DE PLANOS EN TIENDA (lider_tienda.php)
+    // ---------------------------------------------------------
+    // (Busca la sección 'LIDER_TIENDA' y añade estas dos líneas)
+    // 'BTN_PLANOS' => '📜 PLANOS',
+    // 'BTN_ADQUIRIR_PLANO' => 'ADQUIRIR PATENTE',
+
+    // ---------------------------------------------------------
+    // NUEVO: SISTEMA DE MERCADO DE SUMINISTROS (Tradeos)
+    // ---------------------------------------------------------
+    'MERCADO' => [
+        'TITULO' => 'CONTRATOS DE SUMINISTRO',
+        'SUBTITULO' => 'Intercambio de activos tácticos entre facciones',
+        'BTN_NUEVO_CONTRATO' => '📝 REDACTAR CONTRATO',
+        'MSG_SIN_OFERTAS' => 'No hay contratos activos en la red en este momento.',
+        'LBL_TU_CONTRATO' => 'TU CONTRATO',
+        'LBL_OFERTA_PUBLICA' => 'OFERTA PÚBLICA',
+        'LBL_OFRECE' => 'OFRECE',
+        'LBL_PIDE' => 'A CAMBIO DE',
+        'BTN_CANCELAR' => 'CANCELAR Y RECUPERAR',
+        'BTN_ACEPTAR' => 'ACEPTAR TRATO',
+        'CONFIRMAR_ACEPTAR' => '¿Confirmas que tienes los vehículos requeridos en tu hangar para aceptar este trato?',
+        'MODAL_TITULO' => 'REDACTAR NUEVO CONTRATO',
+        'PANEL_DAS' => 'TUS ACTIVOS (OFRECES)',
+        'PANEL_PIDES' => 'TUS TÉRMINOS (PIDES)',
+        'LBL_SELECCIONAR' => 'Selecciona unidad...',
+        'LBL_VEHICULO_HANGAR' => 'Vehículo del Hangar',
+        'LBL_VEHICULO_DESEADO' => 'Vehículo Deseado',
+        'LBL_CANTIDAD_ENTREGAR' => 'Cantidad a entregar',
+        'LBL_CANTIDAD_EXIGIDA' => 'Cantidad exigida',
+        'ADVERTENCIA_BLOQUEO' => '⚠️ ATENCIÓN: Al publicar el contrato, las unidades ofrecidas serán bloqueadas de tu hangar.',
+        'BTN_PUBLICAR' => 'FIRMAR Y PUBLICAR CONTRATO',
     ]
 ];

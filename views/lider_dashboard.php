@@ -11,20 +11,21 @@ $txt = require '../config/textos.php';
 $lider_id = $_SESSION['usuario_id'];
 
 try {
-    // OPTIMIZACIÓN 1: Selección de columnas específicas (Ya implementado, mantenido)
+    // 1. Datos del propio líder (Ve todo)
     $stmt_mio = $pdo->prepare("SELECT id, nombre_equipo, bandera_url, dinero, acero, petroleo, naciones_activas FROM cuentas WHERE id = :id");
     $stmt_mio->execute([':id' => $lider_id]);
     $mi_equipo = $stmt_mio->fetch(PDO::FETCH_ASSOC);
 
-    $stmt_otros = $pdo->prepare("SELECT nombre_equipo, bandera_url, dinero, acero, petroleo, naciones_activas FROM cuentas WHERE rol = 'lider' AND id != :id ORDER BY dinero DESC");
+    // 2. REGLA DE LORE (JACKY): Los líderes solo ven nombre, bandera y naciones de los demás.
+    // OPTIMIZACIÓN: Quitamos dinero, acero y petroleo de la consulta SQL.
+    $stmt_otros = $pdo->prepare("SELECT nombre_equipo, bandera_url, naciones_activas FROM cuentas WHERE rol = 'lider' AND id != :id ORDER BY nombre_equipo ASC");
     $stmt_otros->execute([':id' => $lider_id]);
     $otros_equipos = $stmt_otros->fetchAll(PDO::FETCH_ASSOC);
 
-    // OPTIMIZACIÓN 2: CIERRE TÁCTICO DE CONEXIÓN
-    // Liberamos los cursores y la conexión PDO antes de renderizar el HTML pesado
+    // Cierre táctico
     $stmt_mio = null;
     $stmt_otros = null;
-    $pdo = null; 
+    $pdo = null;
 
 } catch (PDOException $e) {
     die("Error en el radar: " . $e->getMessage());
@@ -60,8 +61,10 @@ try {
         }
         .table-m tr td:last-child { border-right: none !important; }
         
-        /* OPTIMIZACIÓN VISUAL: Indicador de sincronización */
         .sync-indicator { font-size: 8px; color: #4a4a4a; text-transform: uppercase; letter-spacing: 2px; }
+        
+        /* Nuevo estilo para recursos censurados */
+        .censored-data { color: #333; font-family: monospace; letter-spacing: 3px; user-select: none; }
     </style>
 </head>
 <body class="bg-[#0d0e0a] text-[var(--text-main)] min-h-screen pb-20">
@@ -141,8 +144,8 @@ try {
         </div>
 
         <div>
-            <h2 class="text-gray-500 font-black uppercase text-[10px] tracking-[0.3em] mb-4 font-['Cinzel']">
-                <?php echo $txt['LIDER_DASHBOARD']['TITULO_RADAR']; ?>
+            <h2 class="text-gray-500 font-black uppercase text-[10px] tracking-[0.3em] mb-4 font-['Cinzel'] flex items-center gap-2">
+                📡 <?php echo $txt['LIDER_DASHBOARD']['TITULO_RADAR']; ?> <span class="text-[8px] text-red-900 bg-red-900/20 px-2 py-1 rounded ml-2">INFORMACIÓN CLASIFICADA</span>
             </h2>
             <div class="m-panel !p-0 overflow-hidden opacity-90 border-[var(--wood-border)]">
                 <table class="w-full text-left table-m border-collapse">
@@ -159,20 +162,20 @@ try {
                         <?php foreach($otros_equipos as $rival): ?>
                             <tr class="transition hover:bg-white/5 border-b border-[var(--wood-border)]/10">
                                 <td class="p-4 flex items-center gap-3">
-                                    <div class="w-10 h-6 bg-black border border-[var(--wood-border)] overflow-hidden shadow-inner">
+                                    <div class="w-10 h-6 bg-black border border-[var(--wood-border)] overflow-hidden shadow-inner opacity-70">
                                         <?php if($rival['bandera_url']): ?>
-                                            <img src="../<?php echo $rival['bandera_url']; ?>" class="w-full h-full object-cover">
+                                            <img src="../<?php echo $rival['bandera_url']; ?>" class="w-full h-full object-cover grayscale">
                                         <?php endif; ?>
                                     </div>
                                     <span class="font-black text-[var(--parchment)] uppercase font-['Cinzel']">
                                         <?php echo htmlspecialchars($rival['nombre_equipo']); ?>
                                     </span>
                                 </td>
-                                <td class="p-4 text-center text-green-600/70 font-['Cinzel']">$<?php echo number_format($rival['dinero']); ?></td>
-                                <td class="p-4 text-center text-gray-400 font-['Cinzel']"><?php echo number_format($rival['acero']); ?>T</td>
-                                <td class="p-4 text-center text-yellow-600/70 font-['Cinzel']"><?php echo number_format($rival['petroleo']); ?>L</td>
+                                <td class="p-4 text-center censored-data" title="Nivel de Autorización Insuficiente">████</td>
+                                <td class="p-4 text-center censored-data" title="Nivel de Autorización Insuficiente">████</td>
+                                <td class="p-4 text-center censored-data" title="Nivel de Autorización Insuficiente">████</td>
                                 <td class="p-4 text-center">
-                                    <div class="flex flex-wrap justify-center gap-1">
+                                    <div class="flex flex-wrap justify-center gap-1 opacity-70">
                                         <?php 
                                         $nacs = array_filter(explode(',', $rival['naciones_activas'] ?? ''));
                                         foreach($nacs as $n): ?>
@@ -187,10 +190,77 @@ try {
             </div>
         </div>
     </main>
-    
+
+    <div id="modalConfig" class="hidden fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-4">
+        <div class="m-panel border-[var(--aoe-gold)] w-full max-w-sm relative">
+            <button onclick="cerrarModal()" class="absolute top-4 right-4 text-[var(--parchment)] hover:text-white font-bold text-xl">&times;</button>
+            <h3 class="m-title text-xl mb-6 border-b border-[var(--wood-border)] pb-2"><?php echo $txt['LIDER_DASHBOARD']['MODAL_TITULO']; ?></h3>
+            <form action="../logic/actualizar_perfil_lider.php" method="POST" enctype="multipart/form-data" class="space-y-5">
+                <div>
+                    <label class="block text-[9px] text-[var(--parchment)] uppercase font-bold mb-2 tracking-widest"><?php echo $txt['LIDER_DASHBOARD']['LBL_NOMBRE']; ?></label>
+                    <input type="text" name="nombre_equipo" value="<?php echo htmlspecialchars($mi_equipo['nombre_equipo'] ?? ''); ?>" required class="m-input w-full text-center text-lg outline-none focus:border-[var(--aoe-gold)]">
+                </div>
+                <div>
+                    <label class="block text-[9px] text-[var(--parchment)] uppercase font-bold mb-2 tracking-widest">
+                        <?php echo $txt['LIDER_DASHBOARD']['LBL_ESTANDARTE']; ?> 
+                        <span class="text-red-500 normal-case tracking-normal ml-2 font-bold">(Máx. 500KB | JPG, PNG, WEBP)</span>
+                    </label>
+                    <div class="m-input p-2 text-center bg-black/50 shadow-inner border-dashed">
+                        <input type="file" name="bandera" accept="image/jpeg, image/png, image/webp" onchange="validarImagen(this)" class="w-full text-[10px] text-gray-500 file:bg-[var(--olive-drab)] file:border-0 file:text-[var(--aoe-gold)] file:font-black file:px-3 file:py-1 cursor-pointer hover:file:brightness-125 transition">
+                    </div>
+                </div>
+                <button type="submit" class="btn-m w-full py-4 mt-4 text-xs tracking-[0.2em]"><?php echo $txt['LIDER_DASHBOARD']['BTN_CONFIRMAR']; ?></button>
+            </form>
+        </div>
+    </div>
+
+<div id="modalErrorArchivo" class="hidden fixed inset-0 bg-black/90 z-[200] flex items-center justify-center p-4">
+    <div class="m-panel w-full max-w-sm relative border-red-800 border-2 shadow-[0_0_15px_rgba(220,38,38,0.3)]">
+        <h3 class="text-red-500 font-black text-lg mb-4 tracking-widest uppercase text-center border-b border-red-900/50 pb-2">
+            ❌ ACCESO DENEGADO
+        </h3>
+        <p id="errorArchivoMsg" class="text-[10px] text-[var(--parchment)] text-center uppercase tracking-widest mb-6 leading-relaxed">
+            </p>
+        <button type="button" onclick="cerrarModalError()" class="btn-m w-full !bg-red-950/40 !border-red-800 !text-red-500 hover:!bg-red-900 hover:!text-white py-3 text-xs tracking-widest">
+            ENTENDIDO
+        </button>
+    </div>
+</div>
+
     <script>
         function abrirModal() { document.getElementById('modalConfig').classList.remove('hidden'); document.body.classList.add('modal-active'); }
         function cerrarModal() { document.getElementById('modalConfig').classList.add('hidden'); document.body.classList.remove('modal-active'); }
+
+        function validarImagen(input) {
+            const maxSize = 500 * 1024; // Límite de 500 KB
+            const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+
+            if (input.files && input.files[0]) {
+                const file = input.files[0];
+
+                if (!allowedTypes.includes(file.type)) {
+                    mostrarErrorArchivo("El archivo seleccionado no es válido.<br><br>Solo se permiten formatos: <span class='text-white font-bold'>JPG, PNG o WEBP</span>.");
+                    input.value = ''; // Solo vacía el selector de imagen, NO el resto del formulario
+                    return;
+                }
+
+                if (file.size > maxSize) {
+                    let pesoReal = (file.size / 1024).toFixed(1);
+                    mostrarErrorArchivo("Carga excesiva detectada: <span class='text-red-400 font-bold'>" + pesoReal + " KB</span>.<br><br>El límite máximo de seguridad del servidor es de <span class='text-white font-bold'>500 KB</span>.<br><br>Por favor, comprime el archivo y vuelve a seleccionarlo.");
+                    input.value = ''; // Solo vacía el selector de imagen, NO el resto del formulario
+                    return;
+                }
+            }
+        }
+
+        function mostrarErrorArchivo(mensaje) {
+            document.getElementById('errorArchivoMsg').innerHTML = mensaje;
+            document.getElementById('modalErrorArchivo').classList.remove('hidden');
+        }
+
+        function cerrarModalError() {
+            document.getElementById('modalErrorArchivo').classList.add('hidden');
+        }
     </script>
 </body>
 </html>

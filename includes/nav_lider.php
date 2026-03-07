@@ -17,6 +17,10 @@
             <a href="lider_inventario.php" class="btn-m !py-1 !px-4 text-[10px] <?php echo $pagina_actual == 'lider_inventario.php' ? '' : 'grayscale opacity-60 hover:grayscale-0 hover:opacity-100'; ?>">
                 <?php echo $txt['NAV']['INVENTARIO']; ?>
             </a>
+
+            <a href="lider_mercado.php" class="btn-m !bg-none !border-[var(--khaki-beige)] hover:!border-[var(--aoe-gold)] hover:text-[var(--aoe-gold)] text-[10px] tracking-widest flex items-center gap-2">
+                <?php echo $txt['MERCADO']['TITULO']; ?>
+            </a>
         </div>
     </div>
 

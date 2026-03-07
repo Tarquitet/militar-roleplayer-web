@@ -181,9 +181,12 @@ try {
                     </div>
 
                     <div class="mb-6">
-                        <label class="block text-[10px] text-[var(--parchment)] uppercase font-bold mb-1 tracking-widest"><?php echo $txt['STAFF_TIENDA']['LBL_IMG']; ?></label>
-                        <div class="m-input p-2">
-                            <input type="file" name="imagen" accept="image/*" class="w-full text-xs text-gray-800 file:mr-4 file:py-1 file:px-3 file:border-0 file:text-xs file:font-bold file:bg-[var(--olive-drab)] file:text-[var(--aoe-gold)] hover:file:brightness-125 cursor-pointer">
+                        <label class="block text-[9px] text-[var(--parchment)] uppercase font-bold mb-1 tracking-widest">
+                            <?php echo $txt['STAFF_TIENDA']['LBL_IMG']; ?>
+                            <span class="text-red-500 normal-case ml-2 font-bold">(Máx. 500KB | JPG, PNG, WEBP)</span>
+                        </label>
+                        <div class="m-input p-1">
+                            <input type="file" name="imagen" accept="image/jpeg, image/png, image/webp" onchange="validarImagen(this)" class="w-full text-xs cursor-pointer">
                         </div>
                     </div>
 
@@ -276,6 +279,19 @@ try {
             </div>
         </div>
     </main>
+
+<div id="modalErrorArchivo" class="hidden fixed inset-0 bg-black/90 z-[200] flex items-center justify-center p-4">
+    <div class="m-panel w-full max-w-sm relative border-red-800 border-2 shadow-[0_0_15px_rgba(220,38,38,0.3)]">
+        <h3 class="text-red-500 font-black text-lg mb-4 tracking-widest uppercase text-center border-b border-red-900/50 pb-2">
+            ❌ ACCESO DENEGADO
+        </h3>
+        <p id="errorArchivoMsg" class="text-[10px] text-[var(--parchment)] text-center uppercase tracking-widest mb-6 leading-relaxed">
+            </p>
+        <button type="button" onclick="cerrarModalError()" class="btn-m w-full !bg-red-950/40 !border-red-800 !text-red-500 hover:!bg-red-900 hover:!text-white py-3 text-xs tracking-widest">
+            ENTENDIDO
+        </button>
+    </div>
+</div>
 
     <script>
         const txt = <?php echo json_encode($txt['STAFF_TIENDA']); ?>;
@@ -414,6 +430,37 @@ try {
         }
 
         document.addEventListener('DOMContentLoaded', () => { updateEditSubtipos(); });
+
+        function validarImagen(input) {
+            const maxSize = 500 * 1024; // Límite de 500 KB
+            const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+
+            if (input.files && input.files[0]) {
+                const file = input.files[0];
+
+                if (!allowedTypes.includes(file.type)) {
+                    mostrarErrorArchivo("El archivo seleccionado no es válido.<br><br>Solo se permiten formatos: <span class='text-white font-bold'>JPG, PNG o WEBP</span>.");
+                    input.value = ''; // Solo vacía el selector de imagen, NO el resto del formulario
+                    return;
+                }
+
+                if (file.size > maxSize) {
+                    let pesoReal = (file.size / 1024).toFixed(1);
+                    mostrarErrorArchivo("Carga excesiva detectada: <span class='text-red-400 font-bold'>" + pesoReal + " KB</span>.<br><br>El límite máximo de seguridad del servidor es de <span class='text-white font-bold'>500 KB</span>.<br><br>Por favor, comprime el archivo y vuelve a seleccionarlo.");
+                    input.value = ''; // Solo vacía el selector de imagen, NO el resto del formulario
+                    return;
+                }
+            }
+        }
+
+        function mostrarErrorArchivo(mensaje) {
+            document.getElementById('errorArchivoMsg').innerHTML = mensaje;
+            document.getElementById('modalErrorArchivo').classList.remove('hidden');
+        }
+
+        function cerrarModalError() {
+            document.getElementById('modalErrorArchivo').classList.add('hidden');
+        }
     </script>
 </body>
 </html>

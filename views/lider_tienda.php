@@ -24,15 +24,15 @@ try {
     $stmt_naciones = $pdo->query("SELECT nombre FROM naciones ORDER BY nombre ASC");
     $naciones_totales = $stmt_naciones->fetchAll(PDO::FETCH_COLUMN);
 
-    // OPTIMIZACIÓN: Columnas específicas en lugar de SELECT *
     $stmt_cat = $pdo->query("SELECT id, tipo, subtipo, nacion, rango, nombre_vehiculo, costo_dinero, costo_acero, costo_petroleo, imagen_url, es_premium FROM catalogo_tienda ORDER BY rango ASC, es_premium ASC");
     $catalogo_completo = $stmt_cat->fetchAll(PDO::FETCH_ASSOC);
 
-    // CIERRE TÁCTICO: Liberamos la conexión de base de datos de inmediato
-    $stmt_user = null;
-    $stmt_naciones = null;
-    $stmt_cat = null;
-    $pdo = null;
+    // NUEVO: Obtenemos los IDs de los planos que el líder ya posee
+    $stmt_planos = $pdo->prepare("SELECT catalogo_id FROM planos_desbloqueados WHERE cuenta_id = :id");
+    $stmt_planos->execute([':id' => $lider_id]);
+    $mis_planos = $stmt_planos->fetchAll(PDO::FETCH_COLUMN);
+
+    $stmt_user = null; $stmt_naciones = null; $stmt_cat = null; $stmt_planos = null; $pdo = null;
 
 } catch (PDOException $e) { die("Error de enlace: " . $e->getMessage()); }
 ?>
@@ -44,33 +44,15 @@ try {
     <style>
         .modal-active { overflow: hidden; }
         .rank-title { writing-mode: vertical-lr; transform: rotate(180deg); }
-
-        /* --- ESTILOS DE TABLA Y NIEBLA DE GUERRA --- */
         .btn-nacion-tienda { transition: all 0.2s; cursor: pointer; }
         .btn-nacion-tienda.active { background-color: var(--dark-olive) !important; border-color: var(--aoe-gold) !important; color: var(--aoe-gold) !important; }
-
-        .sector-locked {
-            position: relative;
-            filter: grayscale(1) brightness(0.2) !important;
-            pointer-events: none !important;
-            user-select: none;
-        }
-
+        .sector-locked { position: relative; filter: grayscale(1) brightness(0.2) !important; pointer-events: none !important; user-select: none; }
         .m-panel.locked-overlay::after {
-            content: "ZONA FUERA DE JURISDICCIÓN";
-            position: absolute;
-            /* AJUSTE TÁCTICO: Bajamos el texto al 65% para que no tape los TH */
-            top: 65%; left: 50%;
-            transform: translate(-50%, -50%) rotate(-10deg);
-            font-family: 'Cinzel', serif;
-            color: rgba(255, 204, 0, 0.15);
-            font-size: 3rem;
-            font-weight: 900;
-            white-space: nowrap;
-            z-index: 50;
-            border: 2px solid rgba(255, 204, 0, 0.1);
-            padding: 1rem 3rem;
-            pointer-events: none;
+            content: "ZONA FUERA DE JURISDICCIÓN"; position: absolute; top: 65%; left: 50%;
+            transform: translate(-50%, -50%) rotate(-10deg); font-family: 'Cinzel', serif;
+            color: rgba(255, 204, 0, 0.15); font-size: 3rem; font-weight: 900;
+            white-space: nowrap; z-index: 50; border: 2px solid rgba(255, 204, 0, 0.1);
+            padding: 1rem 3rem; pointer-events: none;
         }
     </style>
 </head>
@@ -84,8 +66,7 @@ try {
             <div class="flex gap-2">
                 <?php foreach ($naciones_totales as $n): 
                     $bajo_mando = in_array($n, $naciones_mando); ?>
-                    <button onclick="setNacion('<?php echo $n; ?>')" 
-                            data-nacion-btn="<?php echo $n; ?>"
+                    <button onclick="setNacion('<?php echo $n; ?>')" data-nacion-btn="<?php echo $n; ?>"
                             class="btn-nacion-tienda px-4 py-1 text-[10px] font-black uppercase tracking-widest border border-[var(--wood-border)] 
                             <?php echo $bajo_mando ? 'bg-black/40 text-[var(--parchment)]' : 'bg-black/10 text-gray-700 opacity-60'; ?>">
                         <?php echo $n; ?> <?php echo $bajo_mando ? '' : '🔒'; ?>
@@ -98,9 +79,11 @@ try {
     <div class="m-panel !p-4 !border-t-0 !border-x-0 sticky top-12 z-30 flex justify-between items-center bg-black/40 shadow-2xl">
         <div class="max-w-[1600px] w-full mx-auto flex justify-between items-center px-4">
             <div class="flex gap-4">
-                <button id="btn_tipo_tanque" onclick="setFiltroTipo('tanque')" class="btn-m !text-[10px]"><?php echo $txt['LIDER_TIENDA']['BTN_TANQUES']; ?></button>
+                <button id="btn_tipo_tanque" onclick="setFiltroTipo('tanque')" class="btn-m !text-[10px] grayscale opacity-70"><?php echo $txt['LIDER_TIENDA']['BTN_TANQUES']; ?></button>
                 <button id="btn_tipo_avion" onclick="setFiltroTipo('avion')" class="btn-m !text-[10px] grayscale opacity-70"><?php echo $txt['LIDER_TIENDA']['BTN_AVIONES']; ?></button>
-                <button onclick="abrirModal('modalNuevoVehiculo')" class="btn-m !bg-none !border-[var(--parchment)] !text-[var(--parchment)] hover:!border-[var(--aoe-gold)] hover:!text-[var(--aoe-gold)] !text-[9px]">
+                <button id="btn_tipo_plano" onclick="setFiltroTipo('plano')" class="btn-m !text-[10px] !border-blue-800 !text-blue-400">📜 PLANOS</button>
+                
+                <button onclick="abrirModal('modalNuevoVehiculo')" class="btn-m !bg-none !border-[var(--parchment)] !text-[var(--parchment)] hover:!border-[var(--aoe-gold)] hover:!text-[var(--aoe-gold)] !text-[9px] ml-4">
                     <?php echo $txt['LIDER_TIENDA']['BTN_ADD_ARBOL']; ?>
                 </button>
             </div>
@@ -120,23 +103,28 @@ try {
                         <th class="p-4 text-center">RANK</th>
                         <th class="p-4">CLASE</th>
                         <th class="p-4">IDENTIFICACIÓN</th>
-                        <th class="p-4 text-center">COSTOS</th>
-                        <th class="p-4 text-center">CANTIDAD</th>
-                        <th class="p-4 text-right">ORDEN</th>
+                        <th class="p-4 text-center">COSTOS BASE</th>
+                        <th class="p-4 text-right">ORDEN TÁCTICA</th>
                     </tr>
                 </thead>
                 <tbody id="cuerpo_tabla">
-                    <?php foreach ($catalogo_completo as $item): ?>
+                    <?php foreach ($catalogo_completo as $item): 
+                        // Verificamos si tiene el plano
+                        $tiene_plano = in_array($item['id'], $mis_planos);
+                    ?>
                         <tr class="fila-vehiculo transition hover:bg-white/5 border-b border-[var(--wood-border)]/10" 
                             data-tipo="<?php echo $item['tipo']; ?>" 
-                            data-nacion="<?php echo htmlspecialchars($item['nacion']); ?>">
+                            data-nacion="<?php echo htmlspecialchars($item['nacion']); ?>"
+                            data-tiene-plano="<?php echo $tiene_plano ? 'true' : 'false'; ?>">
                             
                             <td class="p-4 text-center font-black font-['Cinzel'] text-sm">T-<?php echo $item['rango']; ?></td>
                             <td class="p-4 text-[10px] text-[var(--parchment)] uppercase font-bold"><?php echo htmlspecialchars($item['subtipo']); ?></td>
                             
                             <td class="p-4 flex items-center gap-3">
-                                <div class="w-12 h-12 bg-black border border-[var(--wood-border)]">
-                                    <?php if($item['imagen_url']): ?><img src="../<?php echo $item['imagen_url']; ?>" class="w-full h-full object-cover"><?php endif; ?>
+                                <div class="w-12 h-12 bg-black border border-[var(--wood-border)] relative">
+                                    <?php if($item['imagen_url']): ?>
+                                        <img src="../<?php echo $item['imagen_url']; ?>" class="w-full h-full object-cover <?php echo !$tiene_plano ? 'opacity-40 sepia brightness-150 hue-rotate-180' : ''; ?>">
+                                    <?php endif; ?>
                                 </div>
                                 <div class="flex flex-col">
                                     <span class="font-bold text-white uppercase tracking-wide text-xs"><?php echo htmlspecialchars($item['nombre_vehiculo']); ?></span>
@@ -149,15 +137,25 @@ try {
                                 <div class="text-[9px] opacity-60 text-[var(--parchment)]"><?php echo number_format($item['costo_acero']); ?>T | <?php echo number_format($item['costo_petroleo']); ?>L</div>
                             </td>
 
-                            <form action="../logic/procesar_compra.php" method="POST">
-                                <td class="p-4 text-center">
-                                    <input type="number" name="cantidad" value="1" min="1" class="m-input w-16 text-center text-xs font-black">
-                                </td>
-                                <td class="p-4 text-right">
-                                    <input type="hidden" name="catalogo_id" value="<?php echo $item['id']; ?>">
-                                    <button type="submit" class="btn-m !py-1 !px-4 text-[9px]"><?php echo $txt['LIDER_TIENDA']['BTN_ADQUIRIR']; ?></button>
-                                </td>
-                            </form>
+                            <td class="p-4 text-right">
+                                <?php if ($tiene_plano): ?>
+                                    <form action="../logic/procesar_compra.php" method="POST" class="flex items-center justify-end gap-2">
+                                        <input type="number" name="cantidad" value="1" min="1" class="m-input w-16 text-center text-xs font-black">
+                                        <input type="hidden" name="catalogo_id" value="<?php echo $item['id']; ?>">
+                                        <button type="submit" class="btn-m !py-1 !px-4 text-[9px]"><?php echo $txt['LIDER_TIENDA']['BTN_ADQUIRIR']; ?></button>
+                                    </form>
+                                <?php else: ?>
+                                    <form action="../logic/procesar_plano.php" method="POST" class="flex flex-col items-end gap-1">
+                                        <input type="hidden" name="catalogo_id" value="<?php echo $item['id']; ?>">
+                                        <span class="text-[8px] text-blue-400 font-bold uppercase tracking-widest">
+                                            Costo Patente: <span class="text-green-500">$<?php echo number_format($item['costo_dinero']); ?></span>
+                                        </span>
+                                        <button type="submit" class="btn-m !py-1 !px-4 text-[9px] !bg-blue-900/40 !border-blue-500 !text-blue-300 hover:!bg-blue-800 hover:!text-white">
+                                            ADQUIRIR PLANO
+                                        </button>
+                                    </form>
+                                <?php endif; ?>
+                            </td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
@@ -210,9 +208,12 @@ try {
                     <input type="text" name="nombre_vehiculo" required class="m-input w-full">
                 </div>
                 <div class="mb-6">
-                    <label class="block text-[9px] text-[var(--parchment)] uppercase font-bold mb-1 tracking-widest"><?php echo $txt['LIDER_TIENDA']['LBL_IMG']; ?></label>
+                    <label class="block text-[9px] text-[var(--parchment)] uppercase font-bold mb-1 tracking-widest">
+                        <?php echo $txt['LIDER_TIENDA']['LBL_IMG']; ?>
+                        <span class="text-red-500 normal-case ml-2 font-bold">(Máx. 500KB | JPG, PNG, WEBP)</span>
+                    </label>
                     <div class="m-input p-1">
-                        <input type="file" name="imagen" accept="image/*" class="w-full text-xs cursor-pointer">
+                        <input type="file" name="imagen" accept="image/jpeg, image/png, image/webp" onchange="validarImagen(this)" class="w-full text-xs cursor-pointer">
                     </div>
                 </div>
                 <button type="submit" class="btn-m w-full py-3 text-[10px] tracking-widest">
@@ -222,13 +223,27 @@ try {
         </div>
     </div>
 
+<div id="modalErrorArchivo" class="hidden fixed inset-0 bg-black/90 z-[200] flex items-center justify-center p-4">
+    <div class="m-panel w-full max-w-sm relative border-red-800 border-2 shadow-[0_0_15px_rgba(220,38,38,0.3)]">
+        <h3 class="text-red-500 font-black text-lg mb-4 tracking-widest uppercase text-center border-b border-red-900/50 pb-2">
+            ❌ ACCESO DENEGADO
+        </h3>
+        <p id="errorArchivoMsg" class="text-[10px] text-[var(--parchment)] text-center uppercase tracking-widest mb-6 leading-relaxed">
+            </p>
+        <button type="button" onclick="cerrarModalError()" class="btn-m w-full !bg-red-950/40 !border-red-800 !text-red-500 hover:!bg-red-900 hover:!text-white py-3 text-xs tracking-widest">
+            ENTENDIDO
+        </button>
+    </div>
+</div>
+
     <script>
         const txt = <?php echo json_encode($txt['LIDER_TIENDA']); ?>;
         const nacionesMando = <?php echo json_encode($naciones_mando); ?>;
         const preciosBase = <?php echo $precios_json; ?>;
         
         let nacionActual = nacionesMando.length > 0 ? nacionesMando[0] : '<?php echo $naciones_totales[0] ?? ""; ?>';
-        let tipoActual = 'tanque';
+        // Iniciamos por defecto en Planos para que vean qué deben desbloquear primero
+        let tipoActual = 'plano'; 
 
         function initTienda() { 
             actualizarSubtipos(); 
@@ -237,8 +252,10 @@ try {
 
         function setFiltroTipo(t) {
             tipoActual = t;
+            // Estilos de botones
             document.getElementById('btn_tipo_tanque').className = t === 'tanque' ? 'btn-m !text-[10px]' : 'btn-m !text-[10px] grayscale opacity-70';
             document.getElementById('btn_tipo_avion').className = t === 'avion' ? 'btn-m !text-[10px]' : 'btn-m !text-[10px] grayscale opacity-70';
+            document.getElementById('btn_tipo_plano').className = t === 'plano' ? 'btn-m !text-[10px] !border-blue-500 !text-blue-400' : 'btn-m !text-[10px] !border-blue-900 !text-blue-800 opacity-70';
             aplicarFiltros();
         }
 
@@ -255,7 +272,6 @@ try {
             const panel = document.getElementById('panel_tabla');
             const esMio = nacionesMando.includes(nacionActual);
 
-            // Niebla de Guerra
             if (!esMio) {
                 cuerpo.classList.add('sector-locked');
                 panel.classList.add('locked-overlay');
@@ -264,31 +280,70 @@ try {
                 panel.classList.remove('locked-overlay');
             }
 
+            // NUEVA LÓGICA DE FILTRADO PARA PLANOS
             document.querySelectorAll('.fila-vehiculo').forEach(f => {
-                f.style.display = (f.dataset.tipo === tipoActual && f.dataset.nacion === nacionActual) ? '' : 'none';
+                const tienePlano = f.dataset.tienePlano === 'true';
+                
+                if (tipoActual === 'plano') {
+                    // Si estamos en la pestaña Planos, mostrar SOLO los que NO tienen plano
+                    f.style.display = (!tienePlano && f.dataset.nacion === nacionActual) ? '' : 'none';
+                } else {
+                    // Si estamos en Tanques/Aviones, mostrar SOLO los que SI tienen plano y coinciden en tipo
+                    f.style.display = (tienePlano && f.dataset.tipo === tipoActual && f.dataset.nacion === nacionActual) ? '' : 'none';
+                }
             });
         }
 
         function abrirModal(id) { document.getElementById(id).classList.remove('hidden'); document.body.classList.add('modal-active'); }
         function cerrarModal(id) { document.getElementById(id).classList.add('hidden'); document.body.classList.remove('modal-active'); }
-
         function actualizarSubtipos() {
             const select = document.getElementById('subtipo_vehiculo');
             select.innerHTML = '';
-            let opciones = tipoActual === 'tanque' ? ['Ligero', 'Mediano', 'Pesado', 'AAA'] : ['Caza', 'Bombardero', 'Interceptor', 'Ataque'];
+            let opciones = tipoActual === 'avion' ? ['Caza', 'Bombardero', 'Interceptor', 'Ataque'] : ['Ligero', 'Mediano', 'Pesado', 'AAA'];
             opciones.forEach(op => { select.add(new Option(op, op)); });
             actualizarPrecioPreview();
         }
-
         function actualizarPrecioPreview() {
             const subtipo = document.getElementById('subtipo_vehiculo').value;
             const rango = document.getElementById('rango_vehiculo').value;
-            if (preciosBase[tipoActual] && preciosBase[tipoActual][subtipo] && preciosBase[tipoActual][subtipo][rango]) {
-                const c = preciosBase[tipoActual][subtipo][rango];
+            let tipoPrecio = tipoActual === 'avion' ? 'avion' : 'tanque'; // Seguridad por si están en pestaña 'plano'
+            if (preciosBase[tipoPrecio] && preciosBase[tipoPrecio][subtipo] && preciosBase[tipoPrecio][subtipo][rango]) {
+                const c = preciosBase[tipoPrecio][subtipo][rango];
                 document.getElementById('prev_dinero').innerText = '$' + c.dinero;
                 document.getElementById('prev_acero').innerText = c.acero + 't';
                 document.getElementById('prev_petroleo').innerText = c.petroleo + 'L';
             }
+        }
+
+        function validarImagen(input) {
+            const maxSize = 500 * 1024; // Límite de 500 KB
+            const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+
+            if (input.files && input.files[0]) {
+                const file = input.files[0];
+
+                if (!allowedTypes.includes(file.type)) {
+                    mostrarErrorArchivo("El archivo seleccionado no es válido.<br><br>Solo se permiten formatos: <span class='text-white font-bold'>JPG, PNG o WEBP</span>.");
+                    input.value = ''; // Solo vacía el selector de imagen, NO el resto del formulario
+                    return;
+                }
+
+                if (file.size > maxSize) {
+                    let pesoReal = (file.size / 1024).toFixed(1);
+                    mostrarErrorArchivo("Carga excesiva detectada: <span class='text-red-400 font-bold'>" + pesoReal + " KB</span>.<br><br>El límite máximo de seguridad del servidor es de <span class='text-white font-bold'>500 KB</span>.<br><br>Por favor, comprime el archivo y vuelve a seleccionarlo.");
+                    input.value = ''; // Solo vacía el selector de imagen, NO el resto del formulario
+                    return;
+                }
+            }
+        }
+
+        function mostrarErrorArchivo(mensaje) {
+            document.getElementById('errorArchivoMsg').innerHTML = mensaje;
+            document.getElementById('modalErrorArchivo').classList.remove('hidden');
+        }
+
+        function cerrarModalError() {
+            document.getElementById('modalErrorArchivo').classList.add('hidden');
         }
     </script>
 </body>
