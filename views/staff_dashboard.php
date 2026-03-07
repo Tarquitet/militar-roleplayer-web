@@ -15,6 +15,12 @@ try {
     
     $stmt_naciones = $pdo->query("SELECT id, nombre FROM naciones ORDER BY nombre ASC");
     $lista_naciones = $stmt_naciones->fetchAll(PDO::FETCH_ASSOC);
+
+    // OPTIMIZACIÓN DE BASE DE DATOS: Cierre táctico de cursores y conexión
+    $stmt = null;
+    $stmt_naciones = null;
+    $pdo = null;
+
 } catch (PDOException $e) {
     die("Fallo en red de inteligencia: " . $e->getMessage());
 }

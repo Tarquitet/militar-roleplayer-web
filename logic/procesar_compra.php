@@ -23,7 +23,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $pdo->beginTransaction();
 
         // 1. Obtener precio base del vehículo
-        $stmt_item = $pdo->prepare("SELECT * FROM catalogo_tienda WHERE id = :id");
+        // OPTIMIZACIÓN: Solo pedimos los costos en lugar de todo el registro (*)
+        $stmt_item = $pdo->prepare("SELECT costo_dinero, costo_acero, costo_petroleo FROM catalogo_tienda WHERE id = :id");
         $stmt_item->execute([':id' => $item_id]);
         $item = $stmt_item->fetch(PDO::FETCH_ASSOC);
 
@@ -38,6 +39,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $total_petroleo = $item['costo_petroleo'] * $cantidad;
 
         // 3. Obtener recursos del líder con bloqueo de fila
+        // (Nota: Esta consulta ya era óptima, pues pide exactamente los 3 recursos)
         $stmt_user = $pdo->prepare("SELECT dinero, acero, petroleo FROM cuentas WHERE id = :id FOR UPDATE");
         $stmt_user->execute([':id' => $lider_id]);
         $user = $stmt_user->fetch(PDO::FETCH_ASSOC);
@@ -68,17 +70,34 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             ]);
 
             $pdo->commit();
+
+            // OPTIMIZACIÓN: Cierre táctico de la conexión antes de redireccionar
+            $stmt_item = null; $stmt_user = null; $stmt_pay = null; $stmt_inv = null;
+            $pdo = null;
+
             header("Location: ../views/lider_tienda.php?status=compra_exitosa&unidades=$cantidad");
             exit();
 
         } else {
             $pdo->rollBack();
+            
+            // OPTIMIZACIÓN: Liberamos la conexión también en caso de rechazo
+            $stmt_item = null; $stmt_user = null;
+            $pdo = null;
+            
             header("Location: ../views/lider_tienda.php?error=fondos_insuficientes");
             exit();
         }
 
     } catch (Exception $e) {
-        if ($pdo->inTransaction()) $pdo->rollBack();
+        if (isset($pdo) && $pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        
+        // OPTIMIZACIÓN: Liberamos la conexión en caso de error crítico
+        $stmt_item = null; $stmt_user = null;
+        $pdo = null;
+        
         // Usamos el texto centralizado para el error crítico
         die($txt['LOGIC']['ERR_CADENA_SUMINISTRO'] . $e->getMessage());
     }

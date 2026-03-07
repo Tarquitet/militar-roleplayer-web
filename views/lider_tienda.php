@@ -24,8 +24,15 @@ try {
     $stmt_naciones = $pdo->query("SELECT nombre FROM naciones ORDER BY nombre ASC");
     $naciones_totales = $stmt_naciones->fetchAll(PDO::FETCH_COLUMN);
 
-    $stmt_cat = $pdo->query("SELECT * FROM catalogo_tienda ORDER BY rango ASC, es_premium ASC");
+    // OPTIMIZACIÓN: Columnas específicas en lugar de SELECT *
+    $stmt_cat = $pdo->query("SELECT id, tipo, subtipo, nacion, rango, nombre_vehiculo, costo_dinero, costo_acero, costo_petroleo, imagen_url, es_premium FROM catalogo_tienda ORDER BY rango ASC, es_premium ASC");
     $catalogo_completo = $stmt_cat->fetchAll(PDO::FETCH_ASSOC);
+
+    // CIERRE TÁCTICO: Liberamos la conexión de base de datos de inmediato
+    $stmt_user = null;
+    $stmt_naciones = null;
+    $stmt_cat = null;
+    $pdo = null;
 
 } catch (PDOException $e) { die("Error de enlace: " . $e->getMessage()); }
 ?>
