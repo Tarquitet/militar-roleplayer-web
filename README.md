@@ -71,4 +71,9 @@ To ensure the best experience for Command Staff and Faction Leaders, we have dep
 
 ---
 
-_Developed by [Tarquitet](https://tarquitet.com) - 2026_
+
+## 👥 Credits & Collaboration
+
+* **Lead Developer:** **Tarquitet** - *Multimedia Engineer, System Architect, and UI/UX Designer*
+* **AI Collaborator:** **Gemini (Google)** - *Strategic advisor for logic optimization, documentation structure, and tactical UX writing*
+* **Project Vision:** **Soshy (Jacky)** - *Conceptual lead for War Thunder Soshy's Server*

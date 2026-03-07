@@ -71,4 +71,8 @@ Para garantizar la mejor experiencia tanto para el Staff como para los Líderes 
 
 ---
 
-_Desarrollado por [Tarquitet](https://tarquitet.com) - 2026_
+## 👥 Créditos y Colaboración
+
+* **Desarrollador Principal:** **Tarquitet** - *Ingeniero Multimedia, Arquitecto de Software y Diseñador UI/UX*
+* **Colaborador de IA:** **Gemini (Google)** - *Asesor estratégico en optimización de lógica, estructura de documentación y redacción táctica de UX*
+* **Visión del Proyecto:** **Soshy (Jacky)** - *Líder conceptual para War Thunder Soshy's Server*
