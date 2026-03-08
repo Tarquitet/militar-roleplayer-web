@@ -2,14 +2,9 @@
 // config/textos.php
 // ==============================================================================
 // DICCIONARIO TÁCTICO CENTRALIZADO
-// Este archivo controla todos los textos, títulos y alertas del sistema.
 // ==============================================================================
 
 return [
-    // ---------------------------------------------------------
-    // 1. TEXTOS GLOBALES Y COMPARTIDOS
-    // Usados en múltiples vistas (Header, Footer, Títulos base)
-    // ---------------------------------------------------------
     'GLOBAL' => [
         'NOMBRE_PROYECTO' => 'RADAR DE FACCIONES GLOBAL',
         'SITUACION_TITULO' => 'SITUACIÓN DE OPERACIONES',
@@ -19,10 +14,6 @@ return [
         'FOOTER_COPY' => 'Radar de Inteligencia Pública &copy; 2026 - Desarrollado por tarquitet.com',
     ],
 
-    // ---------------------------------------------------------
-    // 2. BOTONES GENÉRICOS
-    // Usados en la interfaz pública y accesos
-    // ---------------------------------------------------------
     'BOTONES' => [
         'DISCORD' => 'COMUNICACIONES DISCORD',
         'INGRESAR' => 'INGRESAR AL SISTEMA',
@@ -30,9 +21,6 @@ return [
         'ENTRAR' => 'ENTRAR AL PANEL',
     ],
 
-    // ---------------------------------------------------------
-    // 3. PANTALLA DE ACCESO (login.php)
-    // ---------------------------------------------------------
     'LOGIN' => [
         'TITULO' => 'ACCESO AL SISTEMA',
         'USUARIO' => 'IDENTIDAD DE USUARIO',
@@ -41,9 +29,6 @@ return [
         'ERR_CAMPOS' => 'Por favor, completa todos los campos.',
     ],
 
-    // ---------------------------------------------------------
-    // 4. RADAR PÚBLICO (index.php)
-    // ---------------------------------------------------------
     'RADAR' => [
         'COL_ESTANDARTE' => 'ESTANDARTE OPERATIVO',
         'COL_IDENTIDAD' => 'IDENTIDAD DE LA FACCIÓN',
@@ -52,9 +37,6 @@ return [
         'NEUTRAL' => 'TERRITORIO NEUTRAL',
     ],
 
-    // ---------------------------------------------------------
-    // 5. BARRAS DE NAVEGACIÓN (includes/nav_staff.php y nav_lider.php)
-    // ---------------------------------------------------------
     'NAV' => [
         'GESTION_GRUPOS' => 'GESTIÓN DE GRUPOS',
         'CATALOGO' => 'CATÁLOGO DE TIENDA',
@@ -65,11 +47,6 @@ return [
         'LOGOUT' => 'CERRAR SESIÓN',
     ],
 
-    // ==============================================================================
-    // VISTAS DEL ALTO MANDO (STAFF / JACKY)
-    // ==============================================================================
-
-    // Textos para la vista de inspección de inventarios (staff_ver_inventario.php)
     'INVENTARIO_STAFF' => [
         'TITULO' => 'INVENTARIO DE FACCIÓN',
         'SUBTITULO' => 'INSPECCIÓN DE ACTIVOS MILITARES',
@@ -85,10 +62,10 @@ return [
         'BTN_DESTRUIR' => 'ELIMINAR GRUPO TÁCTICO',
         'SIN_ACTIVOS' => 'SIN UNIDADES REGISTRADAS EN',
         'LBL_CANTIDAD' => 'CANTIDAD OPERATIVA',
-        'NO_IMG' => 'NO VISUAL'
+        'NO_IMG' => 'NO VISUAL',
+        'BTN_REEMBOLSAR' => 'CONFISCAR Y REEMBOLSAR'
     ],
 
-    // Textos para la gestión del catálogo y editor de precios (staff_tienda.php)
     'STAFF_TIENDA' => [
         'BTN_PRECIOS' => 'AJUSTAR PRECIOS',
         'BTN_ANADIR' => 'AÑADIR ACTIVO',
@@ -122,9 +99,12 @@ return [
         'LBL_ACTUAL' => 'ACTUAL',
         'BTN_ACTUALIZAR_PR' => 'SOBREESCRIBIR VALORES',
         'SIN_PAISES' => 'SIN CONEXIÓN A NACIONES',
+        'MODAL_DEL_ADVERTENCIA' => 'ATENCIÓN: Este activo está en uso por varios equipos.',
+        'LBL_PERDIDA_ESTIMADA' => 'Capital total en circulación:',
+        'BTN_DEL_SIMPLE' => 'BORRAR SIN REEMBOLSO',
+        'BTN_DEL_REEMBOLSO' => 'BORRAR Y REEMBOLSAR A TODOS',
     ],
 
-    // Textos para la gestión de territorios (staff_paises.php)
     'STAFF_PAISES' => [
         'TITULO' => 'CATÁLOGO DE NACIONES',
         'SUBTITULO' => 'Gestión de territorios y fronteras disponibles para las facciones.',
@@ -141,7 +121,6 @@ return [
         'CONFIRMAR_BORRAR' => '¿Autorizar purga territorial? Esta acción no se puede deshacer.',
     ],
 
-    // Textos para el panel central de administración y NUKE (staff_dashboard.php)
     'STAFF_DASHBOARD' => [
         'TITULO' => 'MANDO CENTRAL DE FACCIONES',
         'SUBTITULO' => 'Administración global de recursos, inventarios y fronteras territoriales.',
@@ -174,11 +153,6 @@ return [
         'PH_PASSWORD' => 'Nueva clave...',
     ],
 
-    // ==============================================================================
-    // VISTAS DE LOS LÍDERES DE FACCIÓN
-    // ==============================================================================
-
-    // Textos para la adquisición de vehículos en el Árbol Tecnológico (lider_tienda.php)
     'LIDER_TIENDA' => [
         'TITULO' => 'HANGAR TECNOLÓGICO',
         'BTN_TANQUES' => 'BLINDADOS',
@@ -209,14 +183,22 @@ return [
         'SECTOR_BLOQUEADO_DESC' => 'Contacte con el Alto Mando para obtener derechos de despliegue en esta región.',
     ],
 
-    // Textos para la vista de unidades poseídas y despliegue de flotas (lider_inventario.php)
     'LIDER_INVENTARIO' => [
-        'TITULO' => 'HANGAR OPERATIVO',
+        'TITULO' => 'HANGAR OPERATIVO Y RADAR',
+        'RADAR_FACCIONES' => '📡 RADAR DE FACCIONES:',
+        'MI_FACCION' => '⭐ MI FACCIÓN',
+        'TERRITORIOS_ACTIVOS' => 'TERRITORIOS ACTIVOS:',
+        'SIN_TERRITORIOS' => 'SIN TERRITORIOS REGISTRADOS',
+        'VISUALIZANDO_PROPIO' => 'VISUALIZANDO HANGAR PROPIO',
+        'VISUALIZANDO_RIVAL' => 'VISUALIZANDO INTELIGENCIA RIVAL',
         'CAT_TANQUES' => 'BLINDADOS',
         'CAT_AVIONES' => 'FUERZA AÉREA',
-        'CAT_FLOTAS' => 'FLOTAS',
+        'CAT_FLOTAS' => 'MIS FLOTAS',
+        'SIN_UNIDADES_SECTOR' => 'No hay unidades registradas en este sector.',
         'SEC_RESERVA' => 'UNIDADES EN RESERVA',
-        'SEC_PREMIUM' => 'ACTIVOS DE ÉLITE',
+        'BTN_VENDER_TRANSFERIR' => '⚙️ VENDER / TRANSFERIR',
+        'BTN_COMPRAR_TIENDA' => '🛒 COMPRAR EN TIENDA',
+        'BTN_ENVIAR_OFERTA' => '🤝 ENVIAR OFERTA',
         'TH_SLOT' => 'SLOT',
         'TH_INSIGNIA' => 'UNIDAD INSIGNIA',
         'TH_ESCOLTA' => 'ESCOLTA',
@@ -228,11 +210,42 @@ return [
         'LBL_INSIGNIA' => 'UNIDAD INSIGNIA PRINCIPAL',
         'PH_UNIDAD' => 'Designación táctica...',
         'BTN_DESPLIEGUE' => 'ORDENAR DESPLIEGUE',
-        'LBL_STOCK' => 'UNIDADES',
-        'NO_IMG' => 'NO VISUAL'
+        'NO_IMG' => 'NO VISUAL',
+        
+        // Modales de Contratos y Gestión
+        'MODAL_VENDER_TITULO' => 'TRANSFERIR ACTIVO A FACCIÓN',
+        'LBL_RECEPTOR_CANTIDAD' => '1. RECEPTOR Y CANTIDAD',
+        'LBL_UNIDADES' => 'UNIDADES:',
+        'LBL_EXIGES_CAMBIO' => '2. LO QUE EXIGES A CAMBIO',
+        'BTN_ENVIAR_VENTA' => '📝 ENVIAR OFERTA DE VENTA',
+        
+        'MODAL_COMPRAR_TITULO' => 'SOLICITAR ACTIVO A FACCIÓN',
+        'LBL_CANTIDAD_SOLICITAS' => '1. CANTIDAD QUE SOLICITAS',
+        'LBL_OFRECES_CAMBIO' => '2. LO QUE OFRECES A CAMBIO',
+        'BTN_ENVIAR_COMPRA' => '📨 ENVIAR OFERTA DE COMPRA',
+
+        'TIT_TRANSFERIR' => '🤝 TRANSFERIR A FACCIÓN',
+        'LBL_FACCION_RECEPTORA' => 'FACCIÓN RECEPTORA:',
+        'LBL_TERMINOS' => 'TÉRMINOS (LO QUE EXIGES A CAMBIO)',
+        'LBL_REGALO_INFO' => 'Si dejas todo en 0, se enviará como un regalo.',
+        'LBL_EXIGIR_VEHICULO' => 'EXIGIR UN VEHÍCULO (OPCIONAL)',
+        
+        'TIT_DESMANTELAR' => '⚠️ DESMANTELAR (REEMBOLSO)',
+        'LBL_CANTIDAD_DEVOLVER' => 'CANTIDAD A DEVOLVER AL STAFF:',
+        'LBL_DESMANTELAR_INFO' => 'Esta acción envía una petición directa al Alto Mando. Las unidades seguirán apareciendo en tu hangar hasta que el Staff apruebe la devolución.',
+        'BTN_SOLICITAR_STAFF' => '🗑️ SOLICITAR AL STAFF',
+        
+        'MSG_REQ_ENVIADA' => '✅ TRANSMISIÓN EXITOSA: Solicitud de reembolso enviada al Alto Mando.',
+        'MSG_CONTRATO_ENVIADO' => '🤝 CONTRATO ENVIADO: La oferta fue transmitida a la facción destino.',
+        
+        'OPT_SELECCIONAR_EQUIPO' => '-- Seleccionar Equipo Destino --',
+        'OPT_EXIGIR_VEHICULO' => '-- Exigir Vehículo (Opcional) --',
+        'OPT_OFRECER_VEHICULO' => '-- Ofrecer Vehículo Propio (Opcional) --',
+        'BTN_REQ_PLANO' => '🔒 REQUIERE PATENTE',
+        'BTN_ADQUIRIR_TIENDA' => '🛒 ADQUIRIR EN TIENDA',
+        'ESTADO_BLOQUEADO' => 'TECNOLOGÍA NO INVESTIGADA',
     ],
 
-    // Textos para el panel principal y radar de enemigos (lider_dashboard.php)
     'LIDER_DASHBOARD' => [
         'TITULO_PROPIO' => 'ESTADO DE MI FACCIÓN',
         'TH_IDENTIDAD' => 'IDENTIDAD',
@@ -252,12 +265,22 @@ return [
         'MODAL_TITULO' => 'PROTOCOLO DE IDENTIDAD',
         'LBL_NOMBRE' => 'NOMBRE DE FACCIÓN',
         'LBL_ESTANDARTE' => 'ESTANDARTE TÁCTICO',
-        'BTN_CONFIRMAR' => 'CONFIRMAR IDENTIDAD'
+        'BTN_CONFIRMAR' => 'CONFIRMAR IDENTIDAD',
+        
+        // Bandeja de Entrada de Contratos
+        'TITULO_TRANSMISIONES' => '📨 TRANSMISIONES DIPLOMÁTICAS ENTRANTES',
+        'LBL_PROPONE' => 'propone:',
+        'LBL_TU_RECIBES' => 'TÚ RECIBES:',
+        'LBL_A_CAMBIO_DE' => '▼ A CAMBIO DE ▼',
+        'LBL_TU_ENTREGAS' => 'TÚ ENTREGAS (PAGAS):',
+        'LBL_REGALO' => 'NADA (ES UN REGALO) 🎁',
+        'BTN_FIRMAR_PAGAR' => 'FIRMAR Y PAGAR',
+        'BTN_RECHAZAR' => 'RECHAZAR',
+        'TAG_CLASIFICADO' => 'CLASIFICADO',
+        'MSG_CONTRATO_FIRMADO' => '✅ CONTRATO FIRMADO: Los recursos fueron transferidos y el vehículo está en tu hangar.',
+        'MSG_CONTRATO_RECHAZADO' => '❌ CONTRATO RECHAZADO: La oferta fue cancelada exitosamente.',
     ],
 
-    // ==============================================================================
-    // LÓGICA DE SERVIDOR Y ALERTAS INTERNAS (CARPETA logic/)
-    // ==============================================================================
     'LOGIC' => [
         'ERR_CRITICO_SUMINISTRO' => 'ERROR CRÍTICO EN LOGÍSTICA DE SUMINISTRO: ',
         'ERR_ACCESO_DENEGADO' => 'ACCESO DENEGADO. Rango insuficiente.',
@@ -273,38 +296,5 @@ return [
         'LOG_FLOTA_DESTRUIDA' => '💥 REPORTE DE COMBATE: Una flota operativa ha sido aniquilada por orden directa del Alto Mando. Objetivo: ',
         'ERR_ACTUALIZAR_RECURSOS' => 'FALLO DE SINCRONIZACIÓN EN LA TRANSFERENCIA DE RECURSOS: ',
         'ERR_ACTUALIZAR_PERFIL' => 'FALLO EN EL PROTOCOLO DE IDENTIDAD: No se pudo registrar el nuevo estandarte. ',
-    ],
-    // ---------------------------------------------------------
-    // NUEVO: SISTEMA DE PLANOS EN TIENDA (lider_tienda.php)
-    // ---------------------------------------------------------
-    // (Busca la sección 'LIDER_TIENDA' y añade estas dos líneas)
-    // 'BTN_PLANOS' => '📜 PLANOS',
-    // 'BTN_ADQUIRIR_PLANO' => 'ADQUIRIR PATENTE',
-
-    // ---------------------------------------------------------
-    // NUEVO: SISTEMA DE MERCADO DE SUMINISTROS (Tradeos)
-    // ---------------------------------------------------------
-    'MERCADO' => [
-        'TITULO' => 'CONTRATOS DE SUMINISTRO',
-        'SUBTITULO' => 'Intercambio de activos tácticos entre facciones',
-        'BTN_NUEVO_CONTRATO' => '📝 REDACTAR CONTRATO',
-        'MSG_SIN_OFERTAS' => 'No hay contratos activos en la red en este momento.',
-        'LBL_TU_CONTRATO' => 'TU CONTRATO',
-        'LBL_OFERTA_PUBLICA' => 'OFERTA PÚBLICA',
-        'LBL_OFRECE' => 'OFRECE',
-        'LBL_PIDE' => 'A CAMBIO DE',
-        'BTN_CANCELAR' => 'CANCELAR Y RECUPERAR',
-        'BTN_ACEPTAR' => 'ACEPTAR TRATO',
-        'CONFIRMAR_ACEPTAR' => '¿Confirmas que tienes los vehículos requeridos en tu hangar para aceptar este trato?',
-        'MODAL_TITULO' => 'REDACTAR NUEVO CONTRATO',
-        'PANEL_DAS' => 'TUS ACTIVOS (OFRECES)',
-        'PANEL_PIDES' => 'TUS TÉRMINOS (PIDES)',
-        'LBL_SELECCIONAR' => 'Selecciona unidad...',
-        'LBL_VEHICULO_HANGAR' => 'Vehículo del Hangar',
-        'LBL_VEHICULO_DESEADO' => 'Vehículo Deseado',
-        'LBL_CANTIDAD_ENTREGAR' => 'Cantidad a entregar',
-        'LBL_CANTIDAD_EXIGIDA' => 'Cantidad exigida',
-        'ADVERTENCIA_BLOQUEO' => '⚠️ ATENCIÓN: Al publicar el contrato, las unidades ofrecidas serán bloqueadas de tu hangar.',
-        'BTN_PUBLICAR' => 'FIRMAR Y PUBLICAR CONTRATO',
     ]
 ];

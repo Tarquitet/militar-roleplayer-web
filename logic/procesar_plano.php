@@ -1,75 +1,49 @@
 <?php
 session_start();
-if (!isset($_SESSION['rol']) || $_SESSION['rol'] !== 'lider') exit();
-
 require_once '../config/conexion.php';
-$txt = require '../config/textos.php';
 
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['catalogo_id'])) {
     $lider_id = $_SESSION['usuario_id'];
-    $item_id = (int)$_POST['catalogo_id'];
+    $cat_id = (int)$_POST['catalogo_id'];
 
     try {
         $pdo->beginTransaction();
 
-        // 1. SEGURIDAD: Verificar si ya tiene el plano para no cobrarle doble
+        // 1. Obtener costo del vehículo (Solo dinero para el plano)
+        $stmt_cat = $pdo->prepare("SELECT costo_dinero FROM catalogo_tienda WHERE id = :id");
+        $stmt_cat->execute([':id' => $cat_id]);
+        $vehiculo = $stmt_cat->fetch(PDO::FETCH_ASSOC);
+
+        // 2. Verificar si ya tiene el plano
         $stmt_check = $pdo->prepare("SELECT id FROM planos_desbloqueados WHERE cuenta_id = :uid AND catalogo_id = :cid");
-        $stmt_check->execute([':uid' => $lider_id, ':cid' => $item_id]);
+        $stmt_check->execute([':uid' => $lider_id, ':cid' => $cat_id]);
+        
         if ($stmt_check->fetch()) {
-            $pdo->rollBack();
-            $pdo = null;
-            header("Location: ../views/lider_tienda.php?error=plano_ya_desbloqueado");
-            exit();
+            throw new Exception("Ya posees la patente de este activo.");
         }
 
-        // 2. Obtener SOLO el costo de dinero del vehículo base
-        $stmt_item = $pdo->prepare("SELECT costo_dinero FROM catalogo_tienda WHERE id = :id");
-        $stmt_item->execute([':id' => $item_id]);
-        $item = $stmt_item->fetch(PDO::FETCH_ASSOC);
+        // 3. Verificar dinero
+        $stmt_u = $pdo->prepare("SELECT dinero FROM cuentas WHERE id = :id FOR UPDATE");
+        $stmt_u->execute([':id' => $lider_id]);
+        $user = $stmt_u->fetch(PDO::FETCH_ASSOC);
 
-        if (!$item) {
-            throw new Exception($txt['LOGIC']['ERR_ACTIVO_NO_ENCONTRADO']);
+        if ($user['dinero'] < $vehiculo['costo_dinero']) {
+            throw new Exception("Capital insuficiente para adquirir la patente.");
         }
 
-        $costo_plano = $item['costo_dinero'];
+        // 4. Cobrar y Registrar
+        $pdo->prepare("UPDATE cuentas SET dinero = dinero - :costo WHERE id = :id")
+            ->execute([':costo' => $vehiculo['costo_dinero'], ':id' => $lider_id]);
 
-        // 3. Verificar fondos (SOLO DINERO, ignoramos acero y petróleo)
-        $stmt_user = $pdo->prepare("SELECT dinero FROM cuentas WHERE id = :id FOR UPDATE");
-        $stmt_user->execute([':id' => $lider_id]);
-        $user = $stmt_user->fetch(PDO::FETCH_ASSOC);
+        $pdo->prepare("INSERT INTO planos_desbloqueados (cuenta_id, catalogo_id) VALUES (:uid, :cid)")
+            ->execute([':uid' => $lider_id, ':cid' => $cat_id]);
 
-        if ($user['dinero'] >= $costo_plano) {
-            
-            // 4. Deducción de capital
-            $stmt_pay = $pdo->prepare("UPDATE cuentas SET dinero = dinero - :d WHERE id = :id");
-            $stmt_pay->execute([':d' => $costo_plano, ':id' => $lider_id]);
-
-            // 5. Otorgar el Plano (Permiso)
-            $stmt_plano = $pdo->prepare("INSERT INTO planos_desbloqueados (cuenta_id, catalogo_id) VALUES (:uid, :cid)");
-            $stmt_plano->execute([':uid' => $lider_id, ':cid' => $item_id]);
-
-            $pdo->commit();
-            
-            // Cierre táctico
-            $stmt_check = null; $stmt_item = null; $stmt_user = null; $stmt_pay = null; $stmt_plano = null; $pdo = null;
-            
-            header("Location: ../views/lider_tienda.php?status=plano_adquirido");
-            exit();
-            
-        } else {
-            $pdo->rollBack();
-            $pdo = null;
-            header("Location: ../views/lider_tienda.php?error=fondos_insuficientes");
-            exit();
-        }
+        $pdo->commit();
+        header("Location: ../views/lider_tienda.php?status=plano_ok");
+        exit();
 
     } catch (Exception $e) {
-        if (isset($pdo) && $pdo->inTransaction()) $pdo->rollBack();
-        $pdo = null;
-        die($txt['LOGIC']['ERR_CADENA_SUMINISTRO'] . $e->getMessage());
+        $pdo->rollBack();
+        die("Error Táctico: " . $e->getMessage());
     }
-} else {
-    header("Location: ../views/lider_tienda.php");
-    exit();
 }
-?>

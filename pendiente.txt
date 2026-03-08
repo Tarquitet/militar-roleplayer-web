@@ -1,0 +1,46 @@
+EN TRADEOS
+Solo Lider1 puede ofrecer dinero o vehiculo a Lider2
+No puede ver inventario de Lider2 ni la tienda de Lider2
+Toca remvoer el sistema de vehiculos a seleccioanr y hacerlo asi sin mas, simple:
+Lider 1 elige el equipo a tradear, ejemplo Lider2
+ofrece lo de su inventario y lider2 lo toma o lo deja, no lo pueden ver los demas es como incriptado entre ellos
+
+Sistema de devolucion en caso de tradeo realizado
+Si lider2 acepto el tradeo de lider1, cuando lider1 haya pagado por un vehiculo de tier mayor (rango)
+El staff devuelve el dinero pagado de lider1 a lider2
+lider 1 se queda de nuevo con ese vehiculo, pero despues staff lo borra en el inventario de lider1
+NOTA: ESTE PROCESO ES MANUAL, NO SE TIENE QUE PROGRAMAR NADA AUTOMATICO PORQUE EL STAFF TIENE EL CONTROL DE MANERA MANUAL
+- en caso de vehiculos obtenidos por tradeo, al moento de hacer una devolucion por parte del staff, el vehiculo regresa al dueño original y la persona que pago por el recupera lo que pago
+
+panel staff de inventario de lideres:
+debe retornar el resto de la informacion del item de la tienda, como tier/rango, clase, tipo de vehiculo, unidades en inventario, br
+
+Revisar lo mismo para la tienda desde el staff
+
+El staff puede eliminar las flotas desde el inventario de los lideres?
+
+En la tienda, cuando el vehiculo o item es premium, debe cambiar el color para hacerlo notar que es premium
+
+Agregar poder ordenar items de tienda e inventario por mayor o menor en cuanto a tier/rango y tipo de
+Ordenarlos por:
+TIER 1
+tantos...
+TIER 2
+tantos... asi hasta el 8
+luego dentro de los tiers
+se vayan organizando poniendome hasta arriba
+los ligeros
+medianos
+pesados
+caza tanques
+AAA
+el br dentro de los rangos
+lo de los ligeros... medianos... esa cosa sera de forma horizontal, izq a derech
+y que en cada tier primero me ponga cazas, luego interceptores, luego aviones de ataque y al ultimo bombarderos
+y que cada rango se pueda extender o acoplar como su fiesen menus, osea como la imagen que se vean como una lista que se mueve arriba abajo
+usar imagen de jacky como referencia, del inventario de tanquse rayado de texto rojo
+agrgar a la tienda y base de datos el sistema del br (ellos mismos lo ponen)
+
+agrgar seguridad al registrar nuevo vehiculo en tienda que todos los campos esten llenos, que no deje guardarlo si falta algo
+
+AGREGAR LAS PALABRAS DE LOS ARCHIVOS ALTERADOS EN TEXTOS.PHP

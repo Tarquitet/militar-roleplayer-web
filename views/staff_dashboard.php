@@ -1,287 +1,229 @@
 <?php
 session_start();
-if (!isset($_SESSION['rol']) || $_SESSION['rol'] !== 'staff') {
-    header("Location: ../login.php");
-    exit();
-}
-
-$root_path = "../";
+if (!isset($_SESSION['rol']) || $_SESSION['rol'] !== 'staff') { header("Location: ../login.php"); exit(); }
 require_once '../config/conexion.php';
+$root_path = "../";
 $txt = require '../config/textos.php';
 
 try {
-    $stmt = $pdo->query("SELECT id, nombre_equipo, dinero, acero, petroleo, naciones_activas FROM cuentas WHERE rol = 'lider' ORDER BY id ASC");
-    $equipos = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-    $stmt_naciones = $pdo->query("SELECT id, nombre FROM naciones ORDER BY nombre ASC");
-    $lista_naciones = $stmt_naciones->fetchAll(PDO::FETCH_ASSOC);
+    // 1. EQUIPOS: Usamos 'username' según militar_rp.sql
+    $stmt_eq = $pdo->query("SELECT id, username, nombre_equipo, bandera_url, dinero, acero, petroleo, naciones_activas FROM cuentas WHERE rol = 'lider' ORDER BY nombre_equipo ASC");
+    $equipos = $stmt_eq->fetchAll(PDO::FETCH_ASSOC);
 
-    // OPTIMIZACIÓN DE BASE DE DATOS: Cierre táctico de cursores y conexión
-    $stmt = null;
-    $stmt_naciones = null;
-    $pdo = null;
+    // 2. SOLICITUDES: Nomenclatura táctica para el modal
+    $stmt_sol = $pdo->query("
+        SELECT s.*, u.nombre_equipo, u.dinero as cash_actual, u.acero as steel_actual, u.petroleo as fuel_actual, c.nombre_vehiculo 
+        FROM solicitudes_reembolso s
+        JOIN cuentas u ON s.cuenta_id = u.id
+        JOIN inventario i ON s.inventario_id = i.id
+        JOIN catalogo_tienda c ON i.catalogo_id = c.id
+        WHERE s.estado = 'pendiente'
+        ORDER BY s.fecha DESC
+    ");
+    $solicitudes = $stmt_sol->fetchAll(PDO::FETCH_ASSOC);
 
-} catch (PDOException $e) {
-    die("Fallo en red de inteligencia: " . $e->getMessage());
-}
+} catch (PDOException $e) { die("FALLO EN ENLACE SATELITAL: " . $e->getMessage()); }
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <title><?php echo $txt['GLOBAL']['MANDO_STAFF']; ?> - Dashboard</title>
+    <title>Estado Mayor - Cuartel General</title>
     <?php include '../includes/head.php'; ?>
     <style>
+        :root {
+            --m-bg: #0a0b08;
+            --m-gold: #c5a059;
+            --m-green: #10b981;
+        }
         .modal-active { overflow: hidden; }
-        .input-recurso { width: 80px; font-family: 'Cinzel', serif; }
-        .col-naciones { max-width: 180px; }
+        
+        /* Eliminamos blurs y dejamos paneles sólidos */
+        .glass-panel {
+            background: #0d0e0a;
+            border: 1px solid rgba(197, 160, 89, 0.4);
+            box-shadow: 0 0 40px rgba(0,0,0,0.9);
+        }
+
+        .terminal-input { 
+            background: #000; 
+            border: 1px solid #333; 
+            color: #fff; 
+            padding: 12px; 
+            border-radius: 2px;
+            font-family: 'Space Mono', monospace;
+            width: 100%;
+        }
+        .terminal-input:focus { border-color: var(--m-gold); outline: none; }
+        
+        .tactical-label { 
+            font-size: 9px; 
+            color: rgba(255,255,255,0.5); 
+            font-weight: 900; 
+            text-transform: uppercase; 
+            letter-spacing: 2px; 
+            margin-bottom: 8px; 
+            display: block; 
+        }
     </style>
 </head>
-<body class="pb-10">
-
+<body class="bg-[#0a0b08] text-[var(--text-main)] min-h-screen pb-20">
     <?php include '../includes/nav_staff.php'; ?>
 
-    <main class="p-8 max-w-[98%] mx-auto">
-        
-        <div class="mb-8 flex justify-between items-end border-b border-[var(--wood-border)] pb-4">
-            <div>
-                <h1 class="m-title text-3xl font-bold mb-2"><?php echo $txt['STAFF_DASHBOARD']['TITULO']; ?></h1>
-                <p class="text-[var(--parchment)] text-xs uppercase tracking-widest font-bold">
-                    <?php echo $txt['STAFF_DASHBOARD']['SUBTITULO']; ?>
-                </p>
-            </div>
-            <div class="flex gap-4">
-                <button onclick="abrirModal('modalGlobalPaises')" class="btn-m !text-[10px] flex items-center gap-2">
-                    🌍 <?php echo $txt['STAFF_DASHBOARD']['BTN_PAISES']; ?>
-                </button>
-                <form id="formNuke" action="../logic/nuke_reboot.php" method="POST">
-                    <button type="button" onclick="abrirModal('modalNuke')" 
-                            class="btn-m !bg-none !bg-red-950 !border-red-600 !text-red-500 hover:!bg-red-900 hover:!text-white !text-[10px] flex items-center gap-2 shadow-[0_0_15px_rgba(220,38,38,0.4)]">
-                        ☢️ <?php echo $txt['STAFF_DASHBOARD']['BTN_NUKE']; ?>
-                    </button>
-                </form>
-            </div>
-        </div>
+    <main class="p-8 max-w-[1400px] mx-auto">
+        <header class="mb-12 border-b border-white/5 pb-8">
+            <h1 class="text-3xl font-black tracking-tighter text-white uppercase italic font-['Cinzel']">Centro de Mando e Inteligencia</h1>
+        </header>
 
-        <?php if (isset($_GET['mensaje']) && $_GET['mensaje'] == 'ok'): ?>
-            <div class="bg-[var(--olive-drab)] text-[var(--aoe-gold)] border border-[var(--aoe-gold)] p-3 mb-6 text-xs font-bold tracking-widest uppercase shadow-lg text-center">
-                Base de datos actualizada con éxito.
-            </div>
-        <?php endif; ?>
-
-        <div class="m-panel !p-0 overflow-hidden mb-32">
-            <table class="w-full text-left border-collapse table-m">
-                <thead>
-                    <tr class="text-[9px] uppercase tracking-widest">
-                        <th class="p-4 border-b border-[var(--wood-border)]/50 text-center uppercase tracking-widest text-[9px]"><?php echo $txt['STAFF_DASHBOARD']['TH_PASSWORD']; ?></th>
-                        <th class="p-4"><?php echo $txt['STAFF_DASHBOARD']['TH_EQUIPO']; ?></th>
-                        <th class="p-4 text-center text-green-500"><?php echo $txt['STAFF_DASHBOARD']['TH_DINERO']; ?></th>
-                        <th class="p-4 text-center text-white"><?php echo $txt['STAFF_DASHBOARD']['TH_ACERO']; ?></th>
-                        <th class="p-4 text-center text-yellow-500"><?php echo $txt['STAFF_DASHBOARD']['TH_PETROLEO']; ?></th>
-                        <th class="p-4"><?php echo $txt['STAFF_DASHBOARD']['TH_NACIONES']; ?></th>
-                        <th class="p-4 text-center"><?php echo $txt['STAFF_DASHBOARD']['TH_GESTION']; ?></th>
-                        <th class="p-4 text-center"><?php echo $txt['STAFF_DASHBOARD']['TH_ACCIONES']; ?></th>
-                    </tr>
-                </thead>
-                <tbody class="text-[var(--text-main)] text-sm">
-                    <?php foreach ($equipos as $equipo): ?>
-                        <tr class="transition hover:bg-white/5">
-                            <form action="../logic/actualizar_recursos.php" method="POST">
-                                <input type="hidden" name="equipo_id" value="<?php echo $equipo['id']; ?>">
-                                
-                                <td class="p-3">
-                                    <input type="text" name="nombre_equipo" value="<?php echo htmlspecialchars($equipo['nombre_equipo'] ?? ''); ?>" 
-                                           class="m-input w-full text-xs outline-none focus:border-[var(--aoe-gold)]">
-                                </td>
-                                <td class="p-3 text-center border-r border-[var(--wood-border)]/30">
-                                    <input type="text" name="nueva_password" 
-                                        placeholder="<?php echo $txt['STAFF_DASHBOARD']['PH_PASSWORD']; ?>" 
-                                        class="m-input w-24 text-[10px] text-center outline-none focus:border-[var(--aoe-gold)] placeholder:opacity-30">
-                                </td>
-                                <td class="p-3 text-center">
-                                    <input type="number" name="dinero" value="<?php echo $equipo['dinero']; ?>" 
-                                           class="m-input input-recurso text-green-500 font-black text-center outline-none focus:border-[var(--aoe-gold)]">
-                                </td>
-                                <td class="p-3 text-center">
-                                    <input type="number" name="acero" value="<?php echo $equipo['acero']; ?>" 
-                                           class="m-input input-recurso text-white font-black text-center outline-none focus:border-[var(--aoe-gold)]">
-                                </td>
-                                <td class="p-3 text-center">
-                                    <input type="number" name="petroleo" value="<?php echo $equipo['petroleo']; ?>" 
-                                           class="m-input input-recurso text-yellow-500 font-black text-center outline-none focus:border-[var(--aoe-gold)]">
-                                </td>
-                                <td class="p-3 col-naciones">
-                                    <span id="text-naciones-<?php echo $equipo['id']; ?>" class="text-[10px] text-[var(--parchment)] font-bold uppercase tracking-widest block truncate" title="<?php echo htmlspecialchars($equipo['naciones_activas'] ?? ''); ?>">
-                                        <?php echo !empty($equipo['naciones_activas']) ? htmlspecialchars($equipo['naciones_activas']) : $txt['STAFF_DASHBOARD']['SIN_NACIONES']; ?>
-                                    </span>
-                                    <input type="hidden" 
-                                        id="input-naciones-<?php echo $equipo['id']; ?>" 
-                                        name="naciones_activas_string" 
-                                        value="<?php echo htmlspecialchars($equipo['naciones_activas'] ?? ''); ?>">
-                                </td>
-                                <td class="p-3 text-center">
-                                    <button type="button" onclick="abrirModalNaciones(<?php echo $equipo['id']; ?>, '<?php echo htmlspecialchars($equipo['nombre_equipo'] ?? 'Comando ' . $equipo['id']); ?>')" 
-                                            class="btn-m !bg-none !border-[var(--khaki-beige)] !text-[var(--parchment)] hover:!text-[var(--aoe-gold)] hover:!border-[var(--aoe-gold)] !py-1 !px-2 !text-[9px]">
-                                        <?php echo $txt['STAFF_DASHBOARD']['BTN_EDITAR']; ?>
-                                    </button>
-                                </td>
-                                <td class="p-3 text-center flex justify-center gap-2">
-                                    <button type="submit" class="btn-m !py-1 !px-2 !text-[9px]">
-                                        <?php echo $txt['STAFF_DASHBOARD']['BTN_GUARDAR']; ?>
-                                    </button>
-                                    <a href="staff_ver_inventario.php?id=<?php echo $equipo['id']; ?>" class="btn-m !bg-none !border-[#5865F2] !text-[#5865F2] hover:!bg-[#5865F2] hover:!text-white !py-1 !px-2 !text-[9px]">
-                                        <?php echo $txt['STAFF_DASHBOARD']['BTN_INVENTARIO']; ?>
-                                    </a>
-                                </td>
-                            </form>
-                        </tr>
+        <section class="mb-20">
+            <h2 class="text-[10px] font-black uppercase tracking-[0.4em] mb-8 text-blue-400">📡 SOLICITUDES DE RETORNO</h2>
+            <?php if(empty($solicitudes)): ?>
+                <div class="m-panel border-dashed border-white/5 text-center py-10 opacity-30">
+                    <p class="text-gray-500 text-[10px] uppercase font-black">Sin solicitudes logísticas.</p>
+                </div>
+            <?php else: ?>
+                <div class="grid grid-cols-1 gap-4">
+                    <?php foreach($solicitudes as $s): ?>
+                        <div class="m-panel !p-0 overflow-hidden bg-[#11130f] border border-white/5 flex justify-between items-center group">
+                            <div class="p-6">
+                                <span class="text-[10px] text-blue-500 font-black uppercase mb-1 block"><?php echo htmlspecialchars($s['nombre_equipo']); ?></span>
+                                <h3 class="text-white font-black text-xl uppercase tracking-tighter"><?php echo htmlspecialchars($s['nombre_vehiculo']); ?> <span class="text-blue-500 ml-3">x<?php echo $s['cantidad']; ?></span></h3>
+                            </div>
+                            <button onclick='abrirModalImpacto(<?php echo json_encode($s); ?>)' class="h-full px-12 bg-blue-900/20 hover:bg-blue-600 text-blue-400 hover:text-white font-black text-[11px] uppercase tracking-widest transition-all">ANALIZAR</button>
+                        </div>
                     <?php endforeach; ?>
-                </tbody>
-            </table>
+                </div>
+            <?php endif; ?>
+        </section>
+
+        <h2 class="text-[10px] font-black uppercase tracking-[0.4em] mb-8 text-[var(--m-gold)]">Expedientes de Facciones</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <?php foreach($equipos as $e): ?>
+                <div class="m-panel !p-0 overflow-hidden bg-[#0d0e0a] border border-white/5 hover:border-yellow-500/30 transition-all group">
+                    <div class="p-6">
+                        <div class="flex justify-between items-start mb-6">
+                            <div class="flex gap-4">
+                                <div class="w-14 h-14 bg-black border border-white/10 rounded overflow-hidden">
+                                    <img src="../<?php echo $e['bandera_url']; ?>" class="w-full h-full object-cover grayscale-[0.5] group-hover:grayscale-0">
+                                </div>
+                                <div>
+                                    <h3 class="text-white font-black text-lg uppercase leading-none mb-2 font-['Cinzel']"><?php echo htmlspecialchars($e['nombre_equipo']); ?></h3>
+                                    <p class="text-[10px] text-gray-500 font-bold uppercase">ID: <span class="text-white"><?php echo htmlspecialchars($e['username']); ?></span></p>
+                                </div>
+                            </div>
+                            <div class="flex flex-col gap-1">
+                                <button onclick='abrirModalEditar(<?php echo json_encode($e); ?>)' class="text-[9px] font-black uppercase text-yellow-500 border border-yellow-500/10 px-3 py-1.5 hover:bg-yellow-500 hover:text-black transition">EDITAR</button>
+                                <a href="staff_ver_inventario.php?id=<?php echo $e['id']; ?>" class="text-[9px] font-black uppercase text-blue-400 border border-blue-500/10 px-3 py-1.5 hover:bg-blue-600 hover:text-white transition text-center">INV</a>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-4 border-t border-white/5 pt-6 font-['Cinzel']">
+                            <div class="text-center"><span class="tactical-label">Cash</span><span class="text-green-500 text-sm font-black">$<?php echo number_format($e['dinero']); ?></span></div>
+                            <div class="text-center border-x border-white/5"><span class="tactical-label">Steel</span><span class="text-white text-sm font-black"><?php echo number_format($e['acero']); ?>T</span></div>
+                            <div class="text-center"><span class="tactical-label">Fuel</span><span class="text-yellow-500 text-sm font-black"><?php echo number_format($e['petroleo']); ?>L</span></div>
+                        </div>
+                    </div>
+                </div>
+            <?php endforeach; ?>
         </div>
     </main>
 
-    <div id="modalSeleccionNaciones" class="hidden fixed inset-0 bg-black/90 z-[70] flex items-center justify-center p-4">
-        <div class="m-panel border-[var(--aoe-gold)] w-full max-w-xs">
-            <div class="border-b border-[var(--wood-border)] pb-2 mb-4 flex justify-between items-center">
-                <h3 class="m-title text-[10px] uppercase tracking-widest" id="tituloModalNaciones"><?php echo $txt['STAFF_DASHBOARD']['MODAL_NAC_TITULO']; ?></h3>
-                <button onclick="cerrarModal('modalSeleccionNaciones')" class="text-[var(--parchment)] hover:text-white">&times;</button>
-            </div>
-            
-            <div id="listaCheckboxesNaciones" class="max-h-60 overflow-y-auto space-y-1 mb-6 pr-2">
-                <?php foreach ($lista_naciones as $n): ?>
-                <label class="flex items-center gap-3 p-2 hover:bg-black/40 border border-transparent hover:border-[var(--wood-border)] cursor-pointer transition group">
-                    <input type="checkbox" class="check-nacion form-checkbox h-4 w-4 bg-black border-[var(--wood-border)] checked:bg-[var(--olive-drab)]" value="<?php echo htmlspecialchars($n['nombre']); ?>">
-                    <span class="text-xs text-[var(--parchment)] uppercase font-bold tracking-widest group-hover:text-[var(--aoe-gold)]"><?php echo htmlspecialchars($n['nombre']); ?></span>
-                </label>
-                <?php endforeach; ?>
-            </div>
-            
-            <button onclick="confirmarSeleccionNaciones()" class="btn-m w-full py-3 text-[10px] tracking-widest">
-                <?php echo $txt['STAFF_DASHBOARD']['BTN_CONFIRMAR']; ?>
-            </button>
-        </div>
-    </div>
-
-    <div id="modalGlobalPaises" class="hidden fixed inset-0 bg-black/90 z-[60] flex items-center justify-center p-4">
-        <div class="m-panel border-[var(--aoe-gold)] w-full max-w-sm">
-            <div class="border-b border-[var(--wood-border)] pb-2 mb-4 flex justify-between items-center">
-                <h3 class="m-title text-[10px] uppercase tracking-widest"><?php echo $txt['STAFF_DASHBOARD']['MODAL_PAISES_TITULO']; ?></h3>
-                <button onclick="cerrarModal('modalGlobalPaises')" class="text-[var(--parchment)] hover:text-white">&times;</button>
-            </div>
-            
-            <form action="../logic/procesar_pais.php" method="POST" class="flex gap-2 mb-6">
-                <input type="hidden" name="accion" value="agregar">
-                <input type="text" name="nombre_pais" required placeholder="<?php echo $txt['STAFF_DASHBOARD']['PH_NUEVO_PAIS']; ?>" class="m-input flex-1 text-[10px] outline-none focus:border-[var(--aoe-gold)]">
-                <button type="submit" class="btn-m !py-2 !px-3 text-[9px]"><?php echo $txt['STAFF_DASHBOARD']['BTN_ADD_PAIS']; ?></button>
-            </form>
-            
-            <div class="max-h-48 overflow-y-auto border border-[var(--wood-border)] bg-black/50 p-2 shadow-inner">
-                <table class="w-full text-xs font-bold">
-                    <?php foreach ($lista_naciones as $n): ?>
-                    <tr class="border-b border-[var(--wood-border)]/50 last:border-0 hover:bg-black transition">
-                        <td class="p-2 text-[var(--parchment)] uppercase tracking-wide"><?php echo htmlspecialchars($n['nombre']); ?></td>
-                        <td class="p-2 text-right">
-                            <form action="../logic/procesar_pais.php" method="POST" onsubmit="return confirm('¿Confirmar purga territorial?');">
-                                <input type="hidden" name="accion" value="eliminar">
-                                <input type="hidden" name="id_pais" value="<?php echo $n['id']; ?>">
-                                <button class="text-red-600 hover:text-red-400 font-black uppercase text-[9px]"><?php echo $txt['STAFF_DASHBOARD']['BTN_DEL_PAIS']; ?></button>
-                            </form>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <div id="modalNuke" class="hidden fixed inset-0 bg-black/95 z-[100] flex items-center justify-center p-4">
-        <div class="bg-black border-4 border-red-600 w-full max-w-sm rounded shadow-[0_0_40px_rgba(220,38,38,0.5)] overflow-hidden relative">
-            
-            <div class="bg-red-950/80 border-b-2 border-red-600 p-4 flex justify-between items-center">
-                <h3 class="font-['Cinzel'] font-black text-red-500 text-sm uppercase tracking-[0.3em]"><?php echo $txt['STAFF_DASHBOARD']['MODAL_NUKE_TITULO']; ?></h3>
-                <button onclick="cerrarModal('modalNuke')" class="text-red-500 hover:text-red-300 text-xl font-bold">&times;</button>
-            </div>
-
-            <div class="p-8 text-center bg-[#0d0a0a]">
-                <div class="mb-6 text-red-600 animate-pulse">
-                    <svg class="w-20 h-20 mx-auto drop-shadow-[0_0_15px_rgba(220,38,38,0.8)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-                    </svg>
-                </div>
+    <div id="modalEdit" class="hidden fixed inset-0 bg-black/95 z-[200] flex items-center justify-center p-4">
+        <div class="m-panel w-full max-w-2xl glass-panel p-10">
+            <h2 class="text-2xl font-black text-white uppercase italic mb-10 border-b border-white/5 pb-4">EXPEDIENTE DE INTELIGENCIA</h2>
+            <form action="../logic/actualizar_equipo_staff.php" method="POST" class="space-y-8">
+                <input type="hidden" name="id" id="edit_id">
                 
-                <h4 class="text-red-500 font-['Cinzel'] font-black mb-3 uppercase text-lg"><?php echo $txt['STAFF_DASHBOARD']['NUKE_CONFIRMAR']; ?></h4>
-                <p class="text-[var(--parchment)] text-xs mb-8 leading-relaxed font-bold">
-                    <?php echo $txt['STAFF_DASHBOARD']['NUKE_DESC']; ?>
-                </p>
+                <div class="grid grid-cols-2 gap-8">
+                    <div>
+                        <label class="tactical-label">Nombre de la Facción</label>
+                        <input type="text" name="nombre_equipo" id="edit_equipo" class="terminal-input">
+                    </div>
+                    <div>
+                        <label class="tactical-label">ID de Acceso (Usuario)</label>
+                        <input type="text" name="username" id="edit_username" class="terminal-input text-yellow-500/40" readonly>
+                    </div>
+                </div>
 
-                <label class="block text-[10px] text-gray-500 uppercase mb-2 font-bold tracking-widest"><?php echo $txt['STAFF_DASHBOARD']['NUKE_INSTRUCCION']; ?></label>
-                <input type="text" id="inputConfirmarNuke" placeholder="---" 
-                       class="w-full bg-black border-2 border-red-900 rounded p-3 text-center text-red-500 font-black tracking-[0.4em] outline-none focus:border-red-500 mb-6 uppercase shadow-inner">
+                <div class="grid grid-cols-2 gap-8">
+                    <div>
+                        <label class="tactical-label">Cambiar Contraseña</label>
+                        <div class="relative">
+                            <input type="password" name="password" id="pass_input" placeholder="Nueva clave..." class="terminal-input pr-10">
+                            <button type="button" onclick="togglePass()" class="absolute right-3 top-3 text-gray-500">👁️</button>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="tactical-label">URL Insignia</label>
+                        <div class="flex gap-2">
+                            <input type="text" name="bandera_url" id="edit_img" class="terminal-input flex-1 text-[10px]">
+                            <button type="button" onclick="window.open(document.getElementById('edit_img').value, '_blank')" class="bg-blue-900/20 text-blue-400 px-4 border border-blue-500/20 text-[10px] font-black uppercase">VER</button>
+                        </div>
+                    </div>
+                </div>
 
-                <button onclick="ejecutarNukeFinal()" 
-                        class="w-full bg-red-700 hover:bg-red-600 text-white font-['Cinzel'] font-black py-4 rounded text-xs transition shadow-[0_0_15px_rgba(220,38,38,0.6)] uppercase tracking-[0.3em]">
-                    <?php echo $txt['STAFF_DASHBOARD']['BTN_ACTIVAR_NUKE']; ?>
-                </button>
-            </div>
+                <div class="bg-black/60 p-6 border border-white/5">
+                    <span class="tactical-label !text-white mb-4 block">Recursos Operativos</span>
+                    <div class="grid grid-cols-3 gap-6">
+                        <div><label class="stat-label text-green-700">CASH</label><input type="number" name="dinero" id="edit_money" class="terminal-input !text-green-500 font-black"></div>
+                        <div><label class="stat-label text-gray-500">STEEL</label><input type="number" name="acero" id="edit_steel" class="terminal-input font-black"></div>
+                        <div><label class="stat-label text-yellow-700">FUEL</label><input type="number" name="petroleo" id="edit_oil" class="terminal-input !text-yellow-500 font-black"></div>
+                    </div>
+                </div>
+
+                <div class="flex gap-4 pt-6">
+                    <button type="submit" class="btn-m flex-1 !py-5 uppercase font-black bg-yellow-600 text-black hover:bg-yellow-500 tracking-[0.2em]">GRABAR DATOS</button>
+                    <button type="button" onclick="cerrarModal('modalEdit')" class="flex-1 !py-5 border border-white/10 text-gray-500 font-black uppercase text-[10px]">ABORTAR</button>
+                </div>
+            </form>
         </div>
     </div>
 
-<script>
-    const TXT_NUKE_ERR = <?php echo json_encode($txt['STAFF_DASHBOARD']['ERR_NUKE']); ?>;
-    let equipoEditandoId = null;
+    <div id="modalImpacto" class="hidden fixed inset-0 bg-black/95 z-[200] flex items-center justify-center p-4">
+        <div class="m-panel w-full max-w-md glass-panel p-10">
+            <h2 class="text-blue-400 font-black text-center text-[10px] tracking-[0.4em] uppercase mb-10">ANÁLISIS DE IMPACTO</h2>
+            <div class="text-center mb-10">
+                <span id="imp_faccion" class="tactical-label mb-2 block"></span>
+                <span id="imp_item" class="text-white font-black text-2xl uppercase tracking-tighter"></span>
+            </div>
+            <div class="space-y-4 mb-10 font-mono">
+                <div class="flex justify-between items-center bg-white/5 p-3"><span class="stat-label !mb-0">Cash</span><div class="flex gap-2 text-xs"><span id="cash_old"></span><span class="text-green-500">→</span><span id="cash_new" class="text-green-500"></span></div></div>
+                <div class="flex justify-between items-center bg-white/5 p-3"><span class="stat-label !mb-0">Steel</span><div class="flex gap-2 text-xs"><span id="steel_old"></span><span class="text-white">→</span><span id="steel_new" class="text-white"></span></div></div>
+                <div class="flex justify-between items-center bg-white/5 p-3"><span class="stat-label !mb-0">Fuel</span><div class="flex gap-2 text-xs"><span id="oil_old"></span><span class="text-yellow-500">→</span><span id="oil_new" class="text-yellow-500"></span></div></div>
+            </div>
+            <form action="../logic/gestionar_reembolso_staff.php" method="POST" class="grid grid-cols-2 gap-4">
+                <input type="hidden" name="solicitud_id" id="imp_id">
+                <button name="accion" value="aprobar" class="bg-green-600 text-black py-4 font-black uppercase text-[10px]">AUTORIZAR</button>
+                <button name="accion" value="rechazar" class="bg-red-900/20 text-red-500 border border-red-900 py-4 font-black uppercase text-[10px]">RECHAZAR</button>
+            </form>
+        </div>
+    </div>
 
-    function abrirModal(id) {
-        document.getElementById(id).classList.remove('hidden');
-        document.body.classList.add('modal-active');
-    }
-
-    function cerrarModal(id) {
-        document.getElementById(id).classList.add('hidden');
-        document.body.classList.remove('modal-active');
-    }
-
-    function abrirModalNaciones(id, nombre) {
-        equipoEditandoId = id;
-        document.getElementById('tituloModalNaciones').innerText = nombre;
-        const actuales = document.getElementById('input-naciones-' + id).value.split(',').map(s => s.trim());
-        document.querySelectorAll('.check-nacion').forEach(c => {
-            c.checked = actuales.includes(c.value);
-        });
-        abrirModal('modalSeleccionNaciones');
-    }
-
-    function confirmarSeleccionNaciones() {
-        const seleccionadas = Array.from(document.querySelectorAll('.check-nacion:checked')).map(c => c.value);
-        const stringResultado = seleccionadas.join(', ');
-        const displayTxt = seleccionadas.length > 0 ? stringResultado : <?php echo json_encode($txt['STAFF_DASHBOARD']['SIN_NACIONES']); ?>;
-        
-        document.getElementById('text-naciones-' + equipoEditandoId).innerText = displayTxt;
-        document.getElementById('input-naciones-' + equipoEditandoId).value = stringResultado;
-        cerrarModal('modalSeleccionNaciones');
-    }
-
-    function ejecutarNukeFinal() {
-        const input = document.getElementById('inputConfirmarNuke');
-        const valor = input.value.trim().toUpperCase();
-
-        if (valor === 'REINICIAR') {
-            document.getElementById('formNuke').submit();
-        } else {
-            input.classList.add('border-red-500', 'bg-red-900/30');
-            alert(TXT_NUKE_ERR);
-            input.value = '';
-            input.focus();
+    <script>
+        function togglePass() { const i = document.getElementById('pass_input'); i.type = i.type === 'password' ? 'text' : 'password'; }
+        function abrirModalEditar(e) {
+            document.getElementById('edit_id').value = e.id;
+            document.getElementById('edit_equipo').value = e.nombre_equipo;
+            document.getElementById('edit_username').value = e.username; 
+            document.getElementById('edit_img').value = e.bandera_url;
+            document.getElementById('edit_money').value = e.dinero;
+            document.getElementById('edit_steel').value = e.acero;
+            document.getElementById('edit_oil').value = e.petroleo;
+            document.getElementById('modalEdit').classList.remove('hidden');
+            document.body.classList.add('modal-active');
         }
-    }
-
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            cerrarModal('modalNuke');
-            cerrarModal('modalSeleccionNaciones');
-            cerrarModal('modalGlobalPaises');
+        function abrirModalImpacto(s) {
+            document.getElementById('imp_id').value = s.id;
+            document.getElementById('imp_faccion').innerText = s.nombre_equipo;
+            document.getElementById('imp_item').innerText = s.nombre_vehiculo + " X" + s.cantidad;
+            document.getElementById('cash_old').innerText = "$"+parseInt(s.cash_actual).toLocaleString();
+            document.getElementById('cash_new').innerText = "$"+(parseInt(s.cash_actual)+parseInt(s.dinero_total)).toLocaleString();
+            document.getElementById('steel_old').innerText = parseInt(s.steel_actual)+"T";
+            document.getElementById('steel_new').innerText = (parseInt(s.steel_actual)+parseInt(s.acero_total))+"T";
+            document.getElementById('oil_old').innerText = parseInt(s.fuel_actual)+"L";
+            document.getElementById('oil_new').innerText = (parseInt(s.fuel_actual)+parseInt(s.petroleo_total))+"L";
+            document.getElementById('modalImpacto').classList.remove('hidden');
+            document.body.classList.add('modal-active');
         }
-    });
-</script>
-
+        function cerrarModal(id) { document.getElementById(id).classList.add('hidden'); document.body.classList.remove('modal-active'); }
+    </script>
 </body>
 </html>
