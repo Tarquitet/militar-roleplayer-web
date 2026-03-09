@@ -228,6 +228,7 @@ return [
         'MODAL_CENSURA_TIT' => 'ELIMINAR BANDERA',
         'MSG_CONFIRM_CENSURA' => '¿Seguro que quieres eliminar la bandera de este equipo?',
         'BTN_CONF_CENSURA' => 'ELIMINAR BANDERA',
+        'BTN_NUKE' => 'REINICIAR TEMPORADA'
     ],
 
     'LIDER_TIENDA' => [

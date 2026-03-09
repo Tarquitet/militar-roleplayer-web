@@ -95,6 +95,9 @@ try {
                     if ($_GET['msg'] === 'censura_ok') {
                         echo '<div class="text-red-500 border-red-900/50 bg-red-900/10 p-2">'. $txt['STAFF_DASHBOARD']['MSG_CENSURA_OK'] .'</div>';
                     }
+                    if ($_GET['msg'] === 'err_nuke') {
+                        echo '<div class="text-red-500 border-red-900 bg-red-900/10 p-2">'. $txt['STAFF_DASHBOARD']['ERR_NUKE'] .'</div>';
+                    }
                 ?>
             </div>
         <?php endif; ?>
@@ -199,6 +202,17 @@ try {
                 </table>
             </div>
         </section>
+        <section class="mt-20 border-t border-red-900/30 pt-10">
+            <div class="m-panel bg-red-950/5 border-red-900/20 p-8 flex justify-between items-center shadow-[inset_0_0_20px_rgba(220,38,38,0.05)]">
+                <div>
+                    <h3 class="text-red-500 font-black uppercase tracking-[0.3em] mb-1 font-['Cinzel']"><?php echo $txt['STAFF_DASHBOARD']['MODAL_NUKE_TITULO']; ?></h3>
+                    <p class="text-[10px] text-gray-500 uppercase font-bold tracking-widest">Borrado total del progreso para iniciar nueva temporada.</p>
+                </div>
+                <button onclick="abrirModal('modalNuke')" class="bg-red-600 text-black px-10 py-4 font-black uppercase text-[11px] hover:bg-red-500 transition shadow-[0_0_30px_rgba(220,38,38,0.2)]">
+                    <?php echo $txt['STAFF_DASHBOARD']['BTN_NUKE']; ?>
+                </button>
+            </div>
+        </section>
     </main>
 
     <div id="modalEdit" class="hidden fixed inset-0 bg-black/95 z-[200] flex items-center justify-center p-4">
@@ -287,6 +301,48 @@ try {
         </div>
     </div>
 
+    <div id="modalNuke" class="hidden fixed inset-0 bg-black/98 z-[500] flex items-center justify-center p-4 backdrop-blur-md">
+        <div class="m-panel w-full max-w-lg border-red-600 bg-[#0a0a0a] p-10 text-center relative shadow-2xl">
+            <div class="text-red-600 text-6xl mb-6 animate-pulse">☢️</div>
+            
+            <h2 class="text-white font-black uppercase tracking-[0.3em] text-2xl mb-2 font-['Cinzel']">
+                <?php echo $txt['STAFF_DASHBOARD']['MODAL_NUKE_TITULO']; ?>
+            </h2>
+            <p class="text-red-500 text-[10px] font-black uppercase mb-6 tracking-widest">
+                <?php echo $txt['STAFF_DASHBOARD']['NUKE_DESC']; ?>
+            </p>
+            
+            <form action="../logic/nuke_reboot.php" method="POST" id="formNuke">
+                <div class="bg-red-900/10 border border-red-900/30 p-6 mb-8 text-center">
+                    <label class="text-white font-black uppercase text-[10px] block mb-4 tracking-widest">
+                        <?php echo $txt['STAFF_DASHBOARD']['NUKE_INSTRUCCION']; ?>
+                    </label>
+                    
+                    <input type="text" 
+                        id="confirm_word" 
+                        name="confirm_word" 
+                        autocomplete="off"
+                        oninput="validarNuke(this.value)"
+                        class="terminal-input !text-center !text-2xl !border-red-900 !text-red-500 uppercase" 
+                        placeholder="...">
+                </div>
+
+                <div class="flex flex-col gap-4">
+                    <button type="submit" 
+                            id="btnNukeFinal" 
+                            disabled 
+                            class="w-full bg-gray-800 text-gray-500 py-5 font-black uppercase text-[12px] transition tracking-[0.4em] cursor-not-allowed">
+                        <?php echo $txt['STAFF_DASHBOARD']['BTN_ACTIVAR_NUKE']; ?>
+                    </button>
+                    
+                    <button type="button" onclick="cerrarModal('modalNuke')" class="text-gray-500 font-black uppercase text-[9px] hover:text-white transition">
+                        CANCELAR
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
         function togglePass() { const i = document.getElementById('pass_input'); i.type = i.type === 'password' ? 'text' : 'password'; }
         function abrirModalEditar(e) {
@@ -312,6 +368,11 @@ try {
             document.getElementById('oil_new').innerText = (parseInt(s.fuel_actual)+parseInt(s.petroleo_total))+"L";
             document.getElementById('modalImpacto').classList.remove('hidden');
             document.body.classList.add('modal-active');
+        }
+        
+        function abrirModal(id) { 
+            document.getElementById(id).classList.remove('hidden'); 
+            document.body.classList.add('modal-active'); 
         }
         function cerrarModal(id) { document.getElementById(id).classList.add('hidden'); document.body.classList.remove('modal-active'); }
 
@@ -339,6 +400,20 @@ try {
             f.appendChild(i_task);
             document.body.appendChild(f);
             f.submit();
+        }
+
+        // Función para desbloquear el botón solo si escriben REINICIAR
+        function validarNuke(valor) {
+            const btn = document.getElementById('btnNukeFinal');
+            if(valor.toUpperCase() === 'REINICIAR') {
+                btn.disabled = false;
+                btn.classList.remove('bg-gray-800', 'text-gray-500', 'cursor-not-allowed');
+                btn.classList.add('bg-red-600', 'text-black', 'hover:bg-red-500', 'shadow-lg');
+            } else {
+                btn.disabled = true;
+                btn.classList.add('bg-gray-800', 'text-gray-500', 'cursor-not-allowed');
+                btn.classList.remove('bg-red-600', 'text-black', 'hover:bg-red-500', 'shadow-lg');
+            }
         }
     </script>
 </body>
