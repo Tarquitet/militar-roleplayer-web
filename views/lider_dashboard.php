@@ -65,11 +65,21 @@ try {
             <button onclick="location.reload()" class="btn-m !bg-none !border-none !text-[8px] opacity-40 hover:opacity-100">🔄 REFRESCAR</button>
         </div>
 
-        <?php if (isset($_GET['status'])): ?>
+        <?php if (isset($_GET['status']) || isset($_GET['mensaje'])): ?>
             <div class="bg-[var(--olive-drab)] text-[var(--aoe-gold)] border border-[var(--aoe-gold)] p-3 mb-6 text-xs font-black tracking-widest uppercase shadow-lg text-center backdrop-blur-sm">
                 <?php 
-                    if($_GET['status'] == 'contrato_firmado') echo $txt['LIDER_DASHBOARD']['MSG_CONTRATO_FIRMADO'];
-                    if($_GET['status'] == 'contrato_rechazado') echo $txt['LIDER_DASHBOARD']['MSG_CONTRATO_RECHAZADO'];
+                    // Manejo de 'status' (para tradeos y banderas)
+                    if(isset($_GET['status'])){
+                        if($_GET['status'] == 'contrato_firmado') echo $txt['LIDER_DASHBOARD']['MSG_CONTRATO_FIRMADO'];
+                        if($_GET['status'] == 'contrato_rechazado') echo $txt['LIDER_DASHBOARD']['MSG_CONTRATO_RECHAZADO'];
+                        if($_GET['status'] == 'bandera_eliminada') echo "ESTANDARTE ELIMINADO CORRECTAMENTE"; // Mensaje directo o del diccionario
+                    }
+                    
+                    // Manejo de 'mensaje' (para el perfil)
+                    if(isset($_GET['mensaje'])){
+                        if($_GET['mensaje'] == 'perfil_ok') echo "PERFIL OPERATIVO ACTUALIZADO";
+                        if($_GET['mensaje'] == 'bandera_borrada') echo "INSIGNIA DE FACCIÓN REMOVIDA";
+                    }
                 ?>
             </div>
         <?php endif; ?>
@@ -115,17 +125,6 @@ try {
                                     <?php if($c['ofrece_acero'] > 0) echo $c['ofrece_acero']."T Acero<br>"; ?>
                                     <?php if($c['ofrece_petroleo'] > 0) echo "<span class='text-yellow-500'>".$c['ofrece_petroleo']."L Comb.</span><br>"; ?>
                                     <?php if($c['vehiculo_ofrecido_id']) echo "<span class='text-[var(--aoe-gold)] text-lg'>".$c['cantidad_ofrecida']."x ".htmlspecialchars($c['vehiculo_ofrecido'])."</span>"; ?>
-                                </div>
-                            </div>
-                            <div class="text-gray-600 text-xs"><?php echo $txt['LIDER_DASHBOARD']['LBL_A_CAMBIO_DE']; ?></div>
-                            <div>
-                                <span class="block text-[8px] text-red-400 font-bold mb-1 tracking-widest uppercase"><?php echo $txt['LIDER_DASHBOARD']['LBL_TU_ENTREGAS']; ?></span>
-                                <div class="text-sm font-black text-white leading-relaxed">
-                                    <?php if($c['pide_dinero'] > 0) echo "<span class='text-green-500'>$".$c['pide_dinero']."</span><br>"; ?>
-                                    <?php if($c['pide_acero'] > 0) echo $c['pide_acero']."T Acero<br>"; ?>
-                                    <?php if($c['pide_petroleo'] > 0) echo "<span class='text-yellow-500'>".$c['pide_petroleo']."L Comb.</span><br>"; ?>
-                                    <?php if($c['vehiculo_requerido_id']) echo "<span class='text-red-400 text-lg'>".$c['cantidad_requerida']."x ".htmlspecialchars($c['vehiculo_requerido'])."</span>"; ?>
-                                    <?php if($c['pide_dinero']==0 && $c['pide_acero']==0 && $c['pide_petroleo']==0 && empty($c['vehiculo_requerido_id'])) echo "<span class='text-[var(--aoe-gold)]'>".$txt['LIDER_DASHBOARD']['LBL_REGALO']."</span>"; ?>
                                 </div>
                             </div>
                         </div>
@@ -189,14 +188,59 @@ try {
             <form action="../logic/actualizar_perfil_lider.php" method="POST" enctype="multipart/form-data" class="space-y-5">
                 <div><label class="block text-[9px] text-[var(--parchment)] uppercase font-bold mb-2"><?php echo $txt['LIDER_DASHBOARD']['LBL_NOMBRE']; ?></label><input type="text" name="nombre_equipo" value="<?php echo htmlspecialchars($mi_equipo['nombre_equipo'] ?? ''); ?>" required class="m-input w-full text-center text-lg"></div>
                 <div><label class="block text-[9px] text-[var(--parchment)] uppercase font-bold mb-2"><?php echo $txt['LIDER_DASHBOARD']['LBL_ESTANDARTE']; ?> (1MB)</label><div class="m-input p-2 text-center bg-black/50 shadow-inner border-dashed"><input type="file" name="bandera" class="w-full text-[10px] text-gray-500 cursor-pointer"></div></div>
+                <?php if($mi_equipo['bandera_url']): ?>
+                    <div class="mt-2 flex justify-center">
+                        <button type="button" onclick="borrarBanderaLider()" class="text-[8px] text-red-500 font-black uppercase hover:text-white transition tracking-widest">
+                            [ ELIMINAR BANDERA ACTUAL ]
+                        </button>
+                    </div>
+                <?php endif; ?>
                 <button type="submit" class="btn-m w-full py-4 mt-4 text-xs tracking-[0.2em]"><?php echo $txt['LIDER_DASHBOARD']['BTN_CONFIRMAR']; ?></button>
             </form>
+        </div>
+    </div>
+
+    <div id="modalConfirmarBorrado" class="hidden fixed inset-0 bg-black/98 z-[300] flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="m-panel w-full max-w-sm border-red-600 bg-[#0a0a0a] p-10 text-center relative shadow-2xl">
+            <div class="text-red-600 text-5xl mb-6">☢️</div>
+            <h2 class="text-white font-black uppercase tracking-[0.2em] mb-4">DESTRUIR ESTANDARTE</h2>
+            <p class="text-gray-400 text-[10px] font-bold leading-relaxed mb-10 uppercase">
+                ¿Confirma la eliminación permanente de la insignia de su facción?
+            </p>
+            <div class="flex flex-col gap-3">
+                <button onclick="ejecutarBorrado()" class="bg-red-600 text-black w-full py-4 font-black uppercase text-[11px] hover:bg-red-500 transition tracking-widest">EJECUTAR ORDEN</button>
+                <button onclick="cerrarModalBorrado()" class="text-gray-500 font-black uppercase text-[9px] hover:text-white transition">ABORTAR</button>
+            </div>
         </div>
     </div>
 
     <script>
         function abrirModal() { document.getElementById('modalConfig').classList.remove('hidden'); document.body.classList.add('modal-active'); }
         function cerrarModal() { document.getElementById('modalConfig').classList.add('hidden'); document.body.classList.remove('modal-active'); }
+
+        function borrarBanderaLider() {
+            document.getElementById('modalConfirmarBorrado').classList.remove('hidden');
+        }
+
+        function ejecutarBorrado() {
+            const f = document.createElement('form');
+            f.method = 'POST';
+            f.action = '../logic/actualizar_perfil_lider.php';
+            
+            // Enviamos una señal única: 'solo_borrar_bandera'
+            const i = document.createElement('input');
+            i.type = 'hidden'; 
+            i.name = 'solo_borrar_bandera'; 
+            i.value = '1';
+            
+            f.appendChild(i);
+            document.body.appendChild(f);
+            f.submit();
+        }
+
+        function cerrarModalBorrado() {
+            document.getElementById('modalConfirmarBorrado').classList.add('hidden');
+        }
     </script>
 </body>
 </html>

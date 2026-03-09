@@ -22,6 +22,18 @@ try {
     ");
     $solicitudes = $stmt_sol->fetchAll(PDO::FETCH_ASSOC);
 
+    // NUEVO: Obtener historial de tradeos cerrados
+    $stmt_hist = $pdo->query("
+        SELECT m.*, o.nombre_equipo as ofertante, r.nombre_equipo as receptor, c.nombre_vehiculo 
+        FROM mercado_tradeos m 
+        JOIN cuentas o ON m.ofertante_id = o.id 
+        JOIN cuentas r ON m.receptor_id = r.id 
+        LEFT JOIN catalogo_tienda c ON m.vehiculo_ofrecido_id = c.id 
+        WHERE m.estado = 'completado' 
+        ORDER BY m.fecha_creacion DESC LIMIT 15
+    ");
+    $historial_tradeos = $stmt_hist->fetchAll(PDO::FETCH_ASSOC);
+
 } catch (PDOException $e) { die("FALLO EN ENLACE SATELITAL: " . $e->getMessage()); }
 ?>
 <!DOCTYPE html>
@@ -74,6 +86,19 @@ try {
             <h1 class="text-3xl font-black tracking-tighter text-white uppercase italic font-['Cinzel']">Centro de Mando e Inteligencia</h1>
         </header>
 
+        <?php if (isset($_GET['msg'])): ?>
+            <div class="mb-8 p-4 text-[10px] font-black uppercase tracking-[0.2em] text-center shadow-lg backdrop-blur-md border">
+                <?php 
+                    if ($_GET['msg'] === 'update_ok') {
+                        echo '<div class="text-green-500 border-green-900/50 bg-green-900/10 p-2">Sincronización de Expediente Completa</div>';
+                    }
+                    if ($_GET['msg'] === 'censura_ok') {
+                        echo '<div class="text-red-500 border-red-900/50 bg-red-900/10 p-2">Estandarte Eliminado por el Alto Mando</div>';
+                    }
+                ?>
+            </div>
+        <?php endif; ?>
+
         <section class="mb-20">
             <h2 class="text-[10px] font-black uppercase tracking-[0.4em] mb-8 text-blue-400">📡 SOLICITUDES DE RETORNO</h2>
             <?php if(empty($solicitudes)): ?>
@@ -124,6 +149,41 @@ try {
                 </div>
             <?php endforeach; ?>
         </div>
+
+        <section class="mt-20">
+            <h2 class="text-[10px] font-black uppercase tracking-[0.4em] mb-8 text-green-500">📜 BITÁCORA DIPLOMÁTICA (TRATOS CERRADOS)</h2>
+            <div class="m-panel bg-black/40 border-green-900/30 overflow-hidden">
+                <table class="w-full text-[10px] font-black uppercase text-left">
+                    <thead>
+                        <tr class="text-gray-500 border-b border-white/5 bg-black/60">
+                            <th class="p-4">OFERTANTE</th>
+                            <th class="p-4">RECEPTOR</th>
+                            <th class="p-4">CONTENIDO DEL TRATO</th>
+                            <th class="p-4 text-right">FECHA</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if(empty($historial_tradeos)): ?>
+                            <tr><td colspan="4" class="p-10 text-center text-gray-700 italic">No hay movimientos diplomáticos registrados.</td></tr>
+                        <?php else: foreach($historial_tradeos as $h): ?>
+                            <tr class="border-b border-white/5 hover:bg-white/5 transition">
+                                <td class="p-4 text-white"><?php echo htmlspecialchars($h['ofertante']); ?></td>
+                                <td class="p-4 text-blue-400"><?php echo htmlspecialchars($h['receptor']); ?></td>
+                                <td class="p-4">
+                                    <div class="flex flex-wrap gap-3">
+                                        <?php if($h['ofrece_dinero'] > 0): ?> <span class="text-green-500">$<?php echo number_format($h['ofrece_dinero']); ?></span> <?php endif; ?>
+                                        <?php if($h['ofrece_acero'] > 0): ?> <span class="text-white"><?php echo $h['ofrece_acero']; ?>T</span> <?php endif; ?>
+                                        <?php if($h['ofrece_petroleo'] > 0): ?> <span class="text-yellow-500"><?php echo $h['ofrece_petroleo']; ?>L</span> <?php endif; ?>
+                                        <?php if($h['nombre_vehiculo']): ?> <span class="text-blue-300 border border-blue-900/30 px-2 rounded">UNIDAD: <?php echo htmlspecialchars($h['nombre_vehiculo']); ?></span> <?php endif; ?>
+                                    </div>
+                                </td>
+                                <td class="p-4 text-right text-gray-600"><?php echo date('d/m H:i', strtotime($h['fecha_creacion'])); ?></td>
+                            </tr>
+                        <?php endforeach; endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </section>
     </main>
 
     <div id="modalEdit" class="hidden fixed inset-0 bg-black/95 z-[200] flex items-center justify-center p-4">
@@ -155,7 +215,8 @@ try {
                         <label class="tactical-label">URL Insignia</label>
                         <div class="flex gap-2">
                             <input type="text" name="bandera_url" id="edit_img" class="terminal-input flex-1 text-[10px]">
-                            <button type="button" onclick="window.open(document.getElementById('edit_img').value, '_blank')" class="bg-blue-900/20 text-blue-400 px-4 border border-blue-500/20 text-[10px] font-black uppercase">VER</button>
+                            <button type="button" onclick="window.open('../' + document.getElementById('edit_img').value, '_blank')" class="bg-blue-900/20 text-blue-400 px-4 border border-blue-500/20 text-[10px] font-black uppercase">VER</button>
+                            <button type="button" onclick="borrarBanderaStaff()" class="bg-red-900/20 text-red-500 px-4 border border-red-900/50 text-[10px] font-black uppercase hover:bg-red-600 hover:text-white transition">ELIMINAR</button>
                         </div>
                     </div>
                 </div>
@@ -197,6 +258,20 @@ try {
         </div>
     </div>
 
+    <div id="modalStaffBorrar" class="hidden fixed inset-0 bg-black/98 z-[300] flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="m-panel w-full max-w-sm border-red-600 bg-[#0a0a0a] p-10 text-center relative shadow-2xl">
+            <div class="text-red-600 text-5xl mb-6">⚠️</div>
+            <h2 class="text-white font-black uppercase tracking-[0.2em] mb-4">CENSURA DE ACTIVO</h2>
+            <p class="text-gray-400 text-[10px] font-bold leading-relaxed mb-10 uppercase">
+                ¿CONFIRMA LA ELIMINACIÓN PERMANENTE DEL ESTANDARTE DE ESTA FACCIÓN?
+            </p>
+            <div class="flex flex-col gap-3">
+                <button onclick="ejecutarBorradoStaff()" class="bg-red-600 text-black w-full py-4 font-black uppercase text-[11px] hover:bg-red-500 transition">CONFIRMAR CENSURA</button>
+                <button onclick="cerrarModal('modalStaffBorrar')" class="text-gray-500 font-black uppercase text-[9px] hover:text-white transition">ABORTAR</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         function togglePass() { const i = document.getElementById('pass_input'); i.type = i.type === 'password' ? 'text' : 'password'; }
         function abrirModalEditar(e) {
@@ -224,6 +299,32 @@ try {
             document.body.classList.add('modal-active');
         }
         function cerrarModal(id) { document.getElementById(id).classList.add('hidden'); document.body.classList.remove('modal-active'); }
+
+        function borrarBanderaStaff() {
+            // Abrimos el modal de confirmación
+            document.getElementById('modalStaffBorrar').classList.remove('hidden');
+        }
+
+        function ejecutarBorradoStaff() {
+            // Obtenemos el ID de la cuenta que se está editando actualmente en el modalEdit
+            const idCuenta = document.getElementById('edit_id').value;
+
+            const f = document.createElement('form');
+            f.method = 'POST';
+            f.action = '../logic/actualizar_equipo_staff.php';
+            
+            // Señal específica para que el PHP sepa que solo debe borrar la bandera
+            const i_id = document.createElement('input');
+            i_id.type = 'hidden'; i_id.name = 'id'; i_id.value = idCuenta;
+            
+            const i_task = document.createElement('input');
+            i_task.type = 'hidden'; i_task.name = 'solo_borrar_bandera_staff'; i_task.value = '1';
+            
+            f.appendChild(i_id);
+            f.appendChild(i_task);
+            document.body.appendChild(f);
+            f.submit();
+        }
     </script>
 </body>
 </html>
