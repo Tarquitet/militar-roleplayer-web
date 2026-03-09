@@ -23,6 +23,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         // 2. Vaciamos la tabla de flotas (Hundir navíos)
         $pdo->exec("DELETE FROM flotas");
 
+        // (Opcional) Si también desea vaciar la tienda en cada reinicio, descomente esta línea:
+        // $pdo->exec("DELETE FROM catalogo_tienda");
+
         // 3. Reseteamos los recursos, nombres y naciones de los líderes
         // Nota: NO borramos las cuentas de usuario, solo limpiamos su progreso
         $stmt = $pdo->prepare("UPDATE cuentas SET nombre_equipo = NULL, bandera_url = NULL, dinero = 0, acero = 0, petroleo = 0, naciones_activas = NULL WHERE rol = 'lider'");
@@ -33,7 +36,32 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $stmt_log = $pdo->prepare("INSERT INTO bitacora (mensaje, categoria) VALUES (:msg, 'nuke')");
         $stmt_log->execute([':msg' => $mensaje_bitacora]);
 
-        // Si todo salió bien, confirmamos la aniquilación
+        // =========================================================
+        // ☢️ PROTOCOLO DE BARRIDO FÍSICO (BÚSQUEDA Y DESTRUCCIÓN)
+        // =========================================================
+        // Definimos los objetivos a limpiar en el servidor
+        $carpetas_a_limpiar = [
+            '../uploads/tienda/',
+            '../uploads/banderas/',
+            '../uploads/vehiculos/'
+        ];
+
+        foreach ($carpetas_a_limpiar as $carpeta) {
+            // Buscamos cualquier tipo de archivo dentro de la carpeta
+            $archivos = glob($carpeta . '*'); 
+            
+            if ($archivos) {
+                foreach ($archivos as $archivo) {
+                    // Verificamos que sea un archivo (no un directorio u oculto) y lo eliminamos
+                    if (is_file($archivo)) {
+                        unlink($archivo);
+                    }
+                }
+            }
+        }
+        // =========================================================
+
+        // Si todo salió bien (Base de datos y Archivos limpios), confirmamos la aniquilación
         $pdo->commit();
 
         // Regresamos al dashboard con un mensaje de éxito destructivo

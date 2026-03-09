@@ -60,9 +60,9 @@ try {
                 <h2 class="text-[var(--aoe-gold)] font-black uppercase text-[10px] tracking-[0.3em] mb-1 font-['Cinzel']">
                     <?php echo $txt['LIDER_DASHBOARD']['TITULO_PROPIO']; ?>
                 </h2>
-                <span class="text-[8px] text-gray-500 uppercase tracking-[2px]">Sincronización: <?php echo date("H:i:s"); ?></span>
+                <span class="text-[8px] text-gray-500 uppercase tracking-[2px]"><?php echo $txt['LIDER_DASHBOARD']['LBL_SINCRO']; ?> <?php echo date("H:i:s"); ?></span>
             </div>
-            <button onclick="location.reload()" class="btn-m !bg-none !border-none !text-[8px] opacity-40 hover:opacity-100">🔄 REFRESCAR</button>
+            <button onclick="location.reload()" class="btn-m !bg-none !border-none !text-[8px] opacity-40 hover:opacity-100"><?php echo $txt['LIDER_DASHBOARD']['BTN_REFRESCAR']; ?></button>
         </div>
 
         <?php if (isset($_GET['status']) || isset($_GET['mensaje'])): ?>
@@ -72,13 +72,13 @@ try {
                     if(isset($_GET['status'])){
                         if($_GET['status'] == 'contrato_firmado') echo $txt['LIDER_DASHBOARD']['MSG_CONTRATO_FIRMADO'];
                         if($_GET['status'] == 'contrato_rechazado') echo $txt['LIDER_DASHBOARD']['MSG_CONTRATO_RECHAZADO'];
-                        if($_GET['status'] == 'bandera_eliminada') echo "ESTANDARTE ELIMINADO CORRECTAMENTE"; // Mensaje directo o del diccionario
+                        if($_GET['status'] == 'bandera_eliminada') echo $txt['LIDER_DASHBOARD']['MSG_EST_ELIMINADO']; 
                     }
                     
                     // Manejo de 'mensaje' (para el perfil)
                     if(isset($_GET['mensaje'])){
-                        if($_GET['mensaje'] == 'perfil_ok') echo "PERFIL OPERATIVO ACTUALIZADO";
-                        if($_GET['mensaje'] == 'bandera_borrada') echo "INSIGNIA DE FACCIÓN REMOVIDA";
+                        if($_GET['mensaje'] == 'perfil_ok') echo $txt['LIDER_DASHBOARD']['MSG_PERFIL_OK'];
+                        if($_GET['mensaje'] == 'bandera_borrada') echo $txt['LIDER_DASHBOARD']['MSG_BANDERA_BORRADA'];
                     }
                 ?>
             </div>
@@ -122,8 +122,8 @@ try {
                                 <span class="block text-[8px] text-[var(--aoe-gold)] font-bold mb-1 tracking-widest uppercase"><?php echo $txt['LIDER_DASHBOARD']['LBL_TU_RECIBES']; ?></span>
                                 <div class="text-sm font-black text-white leading-relaxed">
                                     <?php if($c['ofrece_dinero'] > 0) echo "<span class='text-green-500'>$".$c['ofrece_dinero']."</span><br>"; ?>
-                                    <?php if($c['ofrece_acero'] > 0) echo $c['ofrece_acero']."T Acero<br>"; ?>
-                                    <?php if($c['ofrece_petroleo'] > 0) echo "<span class='text-yellow-500'>".$c['ofrece_petroleo']."L Comb.</span><br>"; ?>
+                                    <?php if($c['ofrece_acero'] > 0) echo $c['ofrece_acero']." ".$txt['LIDER_DASHBOARD']['LBL_ACERO_T']."<br>"; ?>
+                                    <?php if($c['ofrece_petroleo'] > 0) echo "<span class='text-yellow-500'>".$c['ofrece_petroleo']." ".$txt['LIDER_DASHBOARD']['LBL_PETROLEO_L']."</span><br>"; ?>
                                     <?php if($c['vehiculo_ofrecido_id']) echo "<span class='text-[var(--aoe-gold)] text-lg'>".$c['cantidad_ofrecida']."x ".htmlspecialchars($c['vehiculo_ofrecido'])."</span>"; ?>
                                 </div>
                             </div>
@@ -167,13 +167,13 @@ try {
                                 if(!empty($nacs)): foreach($nacs as $n): ?>
                                     <span class="badge-territorio !text-[8px] !px-2 !py-0.5"><?php echo trim($n); ?></span>
                                 <?php endforeach; else: ?>
-                                    <span class="text-[8px] text-gray-700 italic uppercase">Nómadas</span>
+                                    <span class="text-[8px] text-gray-700 italic uppercase"><?php echo $txt['LIDER_DASHBOARD']['TXT_NOMADAS']; ?></span>
                                 <?php endif; ?>
                             </div>
                         </div>
                         <div class="p-3 bg-black/80 border-t border-[var(--wood-border)]/50 text-center flex justify-between items-center px-6">
                             <span class="text-[8px] text-gray-600 font-bold uppercase tracking-widest"><?php echo $txt['LIDER_DASHBOARD']['TH_RECURSOS']; ?></span>
-                            <span class="censored-data text-[10px]">████</span>
+                            <span class="censored-data text-[10px]"><?php echo $txt['LIDER_DASHBOARD']['TXT_CENSURADO']; ?></span>
                         </div>
                     </div>
                 <?php endforeach; ?>
@@ -187,11 +187,11 @@ try {
             <h3 class="m-title text-xl mb-6 border-b border-[var(--wood-border)] pb-2"><?php echo $txt['LIDER_DASHBOARD']['MODAL_TITULO']; ?></h3>
             <form action="../logic/actualizar_perfil_lider.php" method="POST" enctype="multipart/form-data" class="space-y-5">
                 <div><label class="block text-[9px] text-[var(--parchment)] uppercase font-bold mb-2"><?php echo $txt['LIDER_DASHBOARD']['LBL_NOMBRE']; ?></label><input type="text" name="nombre_equipo" value="<?php echo htmlspecialchars($mi_equipo['nombre_equipo'] ?? ''); ?>" required class="m-input w-full text-center text-lg"></div>
-                <div><label class="block text-[9px] text-[var(--parchment)] uppercase font-bold mb-2"><?php echo $txt['LIDER_DASHBOARD']['LBL_ESTANDARTE']; ?> (1MB)</label><div class="m-input p-2 text-center bg-black/50 shadow-inner border-dashed"><input type="file" name="bandera" class="w-full text-[10px] text-gray-500 cursor-pointer"></div></div>
+                <div><label class="block text-[9px] text-[var(--parchment)] uppercase font-bold mb-2"><?php echo $txt['LIDER_DASHBOARD']['LBL_ESTANDARTE']; ?> <?php echo $txt['LIDER_DASHBOARD']['LBL_PESO_MAX']; ?></label><div class="m-input p-2 text-center bg-black/50 shadow-inner border-dashed"><input type="file" name="bandera" class="w-full text-[10px] text-gray-500 cursor-pointer"></div></div>
                 <?php if($mi_equipo['bandera_url']): ?>
                     <div class="mt-2 flex justify-center">
                         <button type="button" onclick="borrarBanderaLider()" class="text-[8px] text-red-500 font-black uppercase hover:text-white transition tracking-widest">
-                            [ ELIMINAR BANDERA ACTUAL ]
+                            <?php echo $txt['LIDER_DASHBOARD']['BTN_ELIMINAR_BANDERA']; ?>
                         </button>
                     </div>
                 <?php endif; ?>
@@ -203,13 +203,13 @@ try {
     <div id="modalConfirmarBorrado" class="hidden fixed inset-0 bg-black/98 z-[300] flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="m-panel w-full max-w-sm border-red-600 bg-[#0a0a0a] p-10 text-center relative shadow-2xl">
             <div class="text-red-600 text-5xl mb-6">☢️</div>
-            <h2 class="text-white font-black uppercase tracking-[0.2em] mb-4">DESTRUIR ESTANDARTE</h2>
+            <h2 class="text-white font-black uppercase tracking-[0.2em] mb-4"><?php echo $txt['LIDER_DASHBOARD']['MODAL_DEL_TIT']; ?></h2>
             <p class="text-gray-400 text-[10px] font-bold leading-relaxed mb-10 uppercase">
-                ¿Confirma la eliminación permanente de la insignia de su facción?
+                <?php echo $txt['LIDER_DASHBOARD']['MODAL_DEL_DESC']; ?>
             </p>
             <div class="flex flex-col gap-3">
-                <button onclick="ejecutarBorrado()" class="bg-red-600 text-black w-full py-4 font-black uppercase text-[11px] hover:bg-red-500 transition tracking-widest">EJECUTAR ORDEN</button>
-                <button onclick="cerrarModalBorrado()" class="text-gray-500 font-black uppercase text-[9px] hover:text-white transition">ABORTAR</button>
+                <button onclick="ejecutarBorrado()" class="bg-red-600 text-black w-full py-4 font-black uppercase text-[11px] hover:bg-red-500 transition tracking-widest"><?php echo $txt['LIDER_DASHBOARD']['BTN_EJECUTAR_ORDEN']; ?></button>
+                <button onclick="cerrarModalBorrado()" class="text-gray-500 font-black uppercase text-[9px] hover:text-white transition"><?php echo $txt['LIDER_DASHBOARD']['BTN_ABORTAR']; ?></button>
             </div>
         </div>
     </div>

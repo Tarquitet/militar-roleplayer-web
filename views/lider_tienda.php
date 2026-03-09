@@ -103,7 +103,7 @@ try {
 
     <nav class="bg-[#1a1c11] border-b border-[var(--wood-border)] sticky top-0 z-40 shadow-xl">
         <div class="flex px-4 py-2 items-center gap-4">
-            <span class="text-[var(--aoe-gold)] text-[10px] font-black uppercase tracking-widest pl-4">LÍNEA DE PRODUCCIÓN:</span>
+            <span class="text-[var(--aoe-gold)] text-[10px] font-black uppercase tracking-widest pl-4"><?php echo $txt['LIDER_TIENDA']['LBL_PRODUCCION']; ?></span>
             <div class="flex gap-2">
                 <?php foreach ($naciones_mando as $n): ?>
                     <button onclick="setNacion('<?php echo htmlspecialchars($n); ?>')" data-nav-nacion="<?php echo htmlspecialchars($n); ?>" class="btn-nacion px-4 py-1 text-[10px] font-black uppercase border border-[var(--wood-border)] bg-black/40">
@@ -117,8 +117,8 @@ try {
     <div class="m-panel !p-4 !border-t-0 !border-x-0 sticky top-12 z-30 bg-black/80 backdrop-blur-md border-b border-white/5">
         <div class="max-w-[1600px] w-full mx-auto flex flex-col md:flex-row justify-between items-center px-4 gap-4">
             <div class="flex gap-4">
-                <button id="btn_tanque" onclick="setTipo('tanque')" class="btn-m !text-[10px]">TANQUES</button>
-                <button id="btn_avion" onclick="setTipo('avion')" class="btn-m !text-[10px] grayscale opacity-70">AVIONES</button>
+                <button id="btn_tanque" onclick="setTipo('tanque')" class="btn-m !text-[10px]"><?php echo $txt['LIDER_TIENDA']['BTN_TANQUES']; ?></button>
+                <button id="btn_avion" onclick="setTipo('avion')" class="btn-m !text-[10px] grayscale opacity-70"><?php echo $txt['LIDER_TIENDA']['BTN_AVIONES']; ?></button>
             </div>
             <div class="flex gap-10 font-black font-['Cinzel'] text-sm">
                 <span class="text-green-500">$<?php echo number_format($user['dinero']); ?></span>
@@ -132,10 +132,10 @@ try {
 
         <div class="flex flex-col md:flex-row justify-between items-center mb-6 border-b border-[var(--wood-border)]/50 pb-4 gap-4">
             <h2 class="text-[var(--aoe-gold)] font-black uppercase text-[12px] tracking-[0.3em] font-['Cinzel'] flex items-center gap-2">
-                ⚙️ CATÁLOGO NACIONAL DE INGENIERÍA
+                ⚙️ <?php echo $txt['LIDER_TIENDA']['TITULO']; ?>
             </h2>
             <button onclick="document.getElementById('modalRegistroLider').classList.remove('hidden'); document.body.classList.add('modal-active');" class="btn-m !bg-blue-900/30 !border-blue-700 !text-blue-400 px-6 py-3 text-[10px] font-black uppercase hover:bg-blue-700 hover:text-white transition">
-                + REGISTRAR PROTOTIPO
+                <?php echo $txt['LIDER_TIENDA']['BTN_REGISTRAR']; ?>
             </button>
         </div>
 
@@ -145,7 +145,7 @@ try {
                     <?php ksort($tiers); foreach($tiers as $tier => $tipos): ?>
                         <div class="tier-container shadow-2xl">
                             <div class="tier-header" onclick="toggleTier(this)">
-                                <h2>RANGO / TIER <?php echo $tier; ?></h2>
+                                <h2><?php echo $txt['LIDER_TIENDA']['LBL_TIER_RAN']; ?> <?php echo $tier; ?></h2>
                                 <span class="text-red-500 font-bold">▼</span>
                             </div>
 
@@ -199,7 +199,7 @@ try {
                                                                 </div>
 
                                                                 <div class="mt-auto flex justify-between items-center pt-1 px-1">
-                                                                    <span class="text-[8px] text-gray-500 font-bold uppercase">EN HANGAR:</span>
+                                                                    <span class="text-[8px] text-gray-500 font-bold uppercase"><?php echo $txt['LIDER_TIENDA']['LBL_EN_HANGAR']; ?></span>
                                                                     <span class="text-xs font-black <?php echo $stock_actual > 0 ? 'text-[var(--aoe-gold)]' : 'text-gray-700'; ?>"><?php echo $stock_actual; ?>x</span>
                                                                 </div>
                                                             </div>
@@ -209,11 +209,11 @@ try {
                                                                     <div class="flex gap-1">
                                                                         <input type="number" id="qty-<?php echo $item['id']; ?>" value="1" min="1" class="m-input w-14 !p-1 text-center text-xs font-black">
                                                                         <button onclick="prepararCompraVehiculo(<?php echo $item['id']; ?>, '<?php echo htmlspecialchars($item['nombre_vehiculo']); ?>', <?php echo $item['costo_dinero']; ?>, <?php echo $item['costo_acero']; ?>, <?php echo $item['costo_petroleo']; ?>)" 
-                                                                                class="btn-m flex-1 !py-2 !text-[9px] uppercase font-black">ADQUIRIR</button>
+                                                                                class="btn-m flex-1 !py-2 !text-[9px] uppercase font-black"><?php echo $txt['LIDER_TIENDA']['BTN_ADQUIRIR']; ?></button>
                                                                     </div>
                                                                 <?php else: ?>
                                                                     <button onclick="prepararCompraPlano(<?php echo $item['id']; ?>, '<?php echo htmlspecialchars($item['nombre_vehiculo']); ?>', <?php echo $item['costo_dinero']; ?>)" 
-                                                                            class="btn-m w-full !py-2 !text-[9px] !bg-blue-900/40 !text-blue-300 border-blue-600 font-black uppercase">COMPRAR PLANO</button>
+                                                                            class="btn-m w-full !py-2 !text-[9px] !bg-blue-900/40 !text-blue-300 border-blue-600 font-black uppercase"><?php echo $txt['LIDER_TIENDA']['BTN_COMPRAR_PLANO']; ?></button>
                                                                 <?php endif; ?>
                                                             </div>
                                                         </div>
@@ -237,13 +237,13 @@ try {
 
     <div id="modalConfirm" class="hidden fixed inset-0 bg-black/95 z-[200] flex items-center justify-center p-4">
         <div class="m-panel w-full max-w-sm relative border-[var(--aoe-gold)] border-2 shadow-[0_0_50px_rgba(255,204,0,0.1)]">
-            <h3 class="text-[var(--aoe-gold)] font-black text-xs mb-4 tracking-[0.3em] uppercase text-center border-b border-[var(--wood-border)] pb-2">AUTORIZACIÓN DE MANDO</h3>
+            <h3 class="text-[var(--aoe-gold)] font-black text-xs mb-4 tracking-[0.3em] uppercase text-center border-b border-[var(--wood-border)] pb-2"><?php echo $txt['LIDER_TIENDA']['MODAL_CONFIRM_TIT']; ?></h3>
             <div id="confirmText" class="text-[11px] text-[var(--parchment)] text-center uppercase tracking-widest mb-8 leading-relaxed"></div>
             <form id="formConfirm" method="POST" class="flex flex-col gap-3">
                 <input type="hidden" name="catalogo_id" id="modal_cat_id">
                 <input type="hidden" name="cantidad" id="modal_qty">
-                <button type="submit" class="btn-m w-full py-4 text-[10px] font-black uppercase bg-[var(--dark-olive)]">CONFIRMAR DESPLIEGUE</button>
-                <button type="button" onclick="cerrarModal()" class="text-gray-500 text-[9px] font-black uppercase hover:text-white transition">CANCELAR</button>
+                <button type="submit" class="btn-m w-full py-4 text-[10px] font-black uppercase bg-[var(--dark-olive)]"><?php echo $txt['LIDER_TIENDA']['BTN_CONFIRM_DESP']; ?></button>
+                <button type="button" onclick="cerrarModal()" class="text-gray-500 text-[9px] font-black uppercase hover:text-white transition"><?php echo $txt['LIDER_TIENDA']['BTN_CANCELAR']; ?></button>
             </form>
         </div>
     </div>
@@ -251,39 +251,39 @@ try {
     <div id="modalRegistroLider" class="hidden fixed inset-0 bg-black/95 z-[200] flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="m-panel border-[var(--aoe-gold)] w-full max-w-xl relative shadow-2xl">
             <button type="button" onclick="document.getElementById('modalRegistroLider').classList.add('hidden'); document.body.classList.remove('modal-active');" class="absolute top-4 right-4 text-gray-500 hover:text-white text-2xl">&times;</button>
-            <h3 class="m-title text-xl mb-6 border-b border-[var(--wood-border)] pb-2 text-[var(--aoe-gold)]">ALTA DE NUEVO PROTOTIPO MILITAR</h3>
+            <h3 class="m-title text-xl mb-6 border-b border-[var(--wood-border)] pb-2 text-[var(--aoe-gold)]"><?php echo $txt['LIDER_TIENDA']['MODAL_ADD_TIT']; ?></h3>
             
-            <form action="../logic/procesar_tienda_lider.php" method="POST" enctype="multipart/form-data" class="space-y-4" onsubmit="return confirm('ATENCIÓN: ¿Confirma la subida de este prototipo al arsenal global?');">
+            <form action="../logic/procesar_tienda_lider.php" method="POST" enctype="multipart/form-data" class="space-y-4" onsubmit="return confirm('<?php echo $txt['JS_ALERTAS']['CONFIRMAR_ALTA_LIDER']; ?>');">
                 <input type="hidden" name="accion" value="agregar">
                 
                 <div>
-                    <label class="block text-[10px] text-gray-500 uppercase font-black mb-1">Nomenclatura del Vehículo</label>
+                    <label class="block text-[10px] text-gray-500 uppercase font-black mb-1"><?php echo $txt['LIDER_TIENDA']['LBL_NOM_VEH']; ?></label>
                     <input type="text" name="nombre_vehiculo" required class="m-input w-full text-lg text-white">
                 </div>
                 
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-[10px] text-gray-500 uppercase font-black mb-1">Nación Asignada</label>
+                        <label class="block text-[10px] text-gray-500 uppercase font-black mb-1"><?php echo $txt['LIDER_TIENDA']['LBL_NAC_ASIG']; ?></label>
                         <select name="nacion" required class="m-input w-full font-black uppercase text-[var(--aoe-gold)]">
                             <?php foreach($naciones_mando as $nm): ?><option value="<?php echo htmlspecialchars($nm); ?>"><?php echo htmlspecialchars($nm); ?></option><?php endforeach; ?>
                         </select>
                     </div>
                     <div>
-                        <label class="block text-[10px] text-gray-500 uppercase font-black mb-1">Clasificación Primaria</label>
+                        <label class="block text-[10px] text-gray-500 uppercase font-black mb-1"><?php echo $txt['LIDER_TIENDA']['LBL_CLAS_PRIM']; ?></label>
                         <select name="tipo" id="lider_tipo_v" onchange="actualizarSubtiposLider()" class="m-input w-full uppercase">
-                            <option value="tanque">Fuerzas Terrestres (Tanque)</option>
-                            <option value="avion">Fuerza Aérea (Avión)</option>
+                            <option value="tanque"><?php echo $txt['LIDER_TIENDA']['OPT_TANQUE']; ?></option>
+                            <option value="avion"><?php echo $txt['LIDER_TIENDA']['OPT_AVION']; ?></option>
                         </select>
                     </div>
                 </div>
 
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-[10px] text-gray-500 uppercase font-black mb-1">Sub-clase</label>
+                        <label class="block text-[10px] text-gray-500 uppercase font-black mb-1"><?php echo $txt['LIDER_TIENDA']['LBL_SUB_CLA']; ?></label>
                         <select name="subtipo" id="lider_subtipo_v" onchange="actualizarPrecioLiderPreview()" class="m-input w-full uppercase"></select>
                     </div>
                     <div>
-                        <label class="block text-[10px] text-gray-500 uppercase font-black mb-1">Tier / Rango</label>
+                        <label class="block text-[10px] text-gray-500 uppercase font-black mb-1"><?php echo $txt['LIDER_TIENDA']['LBL_TIER_RAN']; ?></label>
                         <select name="rango" id="lider_rango_v" onchange="actualizarPrecioLiderPreview()" class="m-input w-full text-center font-black">
                             <?php for($i=1; $i<=8; $i++) echo "<option value='$i'>$i</option>"; ?>
                         </select>
@@ -292,19 +292,19 @@ try {
 
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-[10px] text-gray-500 uppercase font-black mb-1">Battle Rating (BR)</label>
+                        <label class="block text-[10px] text-gray-500 uppercase font-black mb-1"><?php echo $txt['LIDER_TIENDA']['LBL_BR']; ?></label>
                         <input type="text" name="br" required placeholder="Ej: 3.3" class="m-input w-full text-center font-mono text-white">
                     </div>
                     <div class="flex items-end">
                         <div class="bg-black p-3 border border-[var(--wood-border)] flex items-center justify-center gap-2 w-full h-[42px]">
                             <input type="checkbox" name="is_premium" value="1" class="w-4 h-4 accent-[#c5a059]">
-                            <span class="text-[10px] font-black text-[#c5a059] uppercase">ES UNIDAD PREMIUM</span>
+                            <span class="text-[10px] font-black text-[#c5a059] uppercase"><?php echo $txt['LIDER_TIENDA']['LBL_PREMIUM']; ?></span>
                         </div>
                     </div>
                 </div>
 
                 <div class="border border-[var(--wood-border)] bg-[#0a0a0a] p-4 mt-6 text-center shadow-inner">
-                    <span class="block text-[9px] text-[var(--parchment)] font-bold uppercase mb-3 tracking-[0.2em] border-b border-white/5 pb-2">COSTO BASE DE PRODUCCIÓN EN MASA</span>
+                    <span class="block text-[9px] text-[var(--parchment)] font-bold uppercase mb-3 tracking-[0.2em] border-b border-white/5 pb-2"><?php echo $txt['LIDER_TIENDA']['TIT_COSTO_PROD']; ?></span>
                     <div class="grid grid-cols-3 gap-2">
                         <div class="bg-black p-2 border border-green-900/30">
                             <span class="block text-[8px] text-green-700 font-black mb-1">CASH</span>
@@ -319,15 +319,15 @@ try {
                             <span id="lider_prev_fuel" class="text-xs text-yellow-500 font-mono font-black">...</span>
                         </div>
                     </div>
-                    <p class="text-[7px] text-gray-500 mt-2 uppercase italic">* El costo es asignado automáticamente por el Alto Mando según el Tier y Clase.</p>
+                    <p class="text-[7px] text-gray-500 mt-2 uppercase italic"><?php echo $txt['LIDER_TIENDA']['TXT_INFO_COSTO']; ?></p>
                 </div>
 
                 <div class="border border-[var(--wood-border)] bg-[#0a0a0a] p-4 text-center mt-4">
-                    <label class="block text-[10px] text-[var(--aoe-gold)] uppercase font-black mb-2">IMAGEN CLASIFICADA DEL PROTOTIPO</label>
+                    <label class="block text-[10px] text-[var(--aoe-gold)] uppercase font-black mb-2"><?php echo $txt['LIDER_TIENDA']['LBL_IMG_CLAS']; ?></label>
                     <input type="file" name="imagen" required accept="image/*" class="w-full text-[10px] text-gray-400 p-2 bg-black border border-white/10">
                 </div>
                 
-                <button type="submit" class="btn-m w-full py-4 mt-4 text-[11px] tracking-[0.2em]">ENVIAR A PRODUCCIÓN EN MASA</button>
+                <button type="submit" class="btn-m w-full py-4 mt-4 text-[11px] tracking-[0.2em]"><?php echo $txt['LIDER_TIENDA']['BTN_ENVIAR_PROD']; ?></button>
             </form>
         </div>
     </div>
@@ -395,7 +395,7 @@ try {
             document.getElementById('modal_cat_id').value = id;
             document.getElementById('modal_qty').value = 1;
             document.getElementById('formConfirm').action = '../logic/procesar_plano.php';
-            document.getElementById('confirmText').innerHTML = `¿AUTORIZA EL DESEMBOLSO PARA LA PATENTE DEL <br><span class='text-white font-black'>${nombre}</span>?<br><br><span class='text-green-500 text-lg'>$${costo.toLocaleString()}</span>`;
+            document.getElementById('confirmText').innerHTML = `<?php echo $txt['LIDER_TIENDA']['JS_CONFIRM_PLANO']; ?> <br><span class='text-white font-black'>${nombre}</span>?<br><br><span class='text-green-500 text-lg'>$${costo.toLocaleString()}</span>`;
             document.getElementById('modalConfirm').classList.remove('hidden');
             document.body.classList.add('modal-active');
         }
@@ -406,7 +406,7 @@ try {
             document.getElementById('modal_cat_id').value = id;
             document.getElementById('modal_qty').value = qty;
             document.getElementById('formConfirm').action = '../logic/procesar_compra.php';
-            document.getElementById('confirmText').innerHTML = `¿CONFIRMA LA PRODUCCIÓN DE <span class='text-[var(--aoe-gold)]'>${qty} UNIDADES</span> DE <br><span class='text-white'>${nombre}</span>?<br><br>COSTO TOTAL: <span class='text-green-500'>$${(d*qty).toLocaleString()}</span> | <span class='text-white'>${(a*qty).toLocaleString()}T</span> | <span class='text-yellow-500'>${(p*qty).toLocaleString()}L</span>`;
+            document.getElementById('confirmText').innerHTML = `<?php echo $txt['LIDER_TIENDA']['JS_CONFIRM_PROD']; ?> <span class='text-[var(--aoe-gold)]'>${qty} <?php echo $txt['LIDER_TIENDA']['JS_UNIDADES']; ?></span> DE <br><span class='text-white'>${nombre}</span>?<br><br><?php echo $txt['LIDER_TIENDA']['JS_COSTO_TOTAL']; ?> <span class='text-green-500'>$${(d*qty).toLocaleString()}</span> | <span class='text-white'>${(a*qty).toLocaleString()}T</span> | <span class='text-yellow-500'>${(p*qty).toLocaleString()}L</span>`;
             document.getElementById('modalConfirm').classList.remove('hidden');
             document.body.classList.add('modal-active');
         }

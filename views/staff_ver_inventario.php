@@ -64,7 +64,7 @@ try {
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <title>Estado Mayor - Inspección Táctica</title>
+    <title><?php echo $txt['STAFF_VER_INVENTARIO']['TITULO_PAGINA']; ?></title>
     <?php include '../includes/head.php'; ?>
     <style>
         .modal-active { overflow: hidden; }
@@ -107,9 +107,9 @@ try {
 
     <main class="p-8 max-w-[1600px] mx-auto">
         <div class="mb-12 flex justify-between items-center border-b border-white/5 pb-8">
-            <a href="staff_dashboard.php" class="btn-m !bg-none !border-white/10 !text-gray-500 hover:!text-[var(--aoe-gold)] !py-2 !px-6 text-[10px] uppercase font-black transition">⬅️ VOLVER</a>
+            <a href="staff_dashboard.php" class="btn-m !bg-none !border-white/10 !text-gray-500 hover:!text-[var(--aoe-gold)] !py-2 !px-6 text-[10px] uppercase font-black transition"><?php echo $txt['STAFF_VER_INVENTARIO']['BTN_VOLVER']; ?></a>
             <div class="text-right">
-                <span class="stat-label">FONDOS DE LA FACCIÓN:</span>
+                <span class="stat-label"><?php echo $txt['STAFF_VER_INVENTARIO']['LBL_FONDOS']; ?></span>
                 <div class="flex gap-6 mt-1 font-black text-lg">
                     <span class="text-green-500">$<?php echo number_format($equipo['dinero']); ?></span>
                     <span class="text-white"><?php echo number_format($equipo['acero']); ?>T</span>
@@ -118,35 +118,35 @@ try {
             </div>
         </div>
 
-        <h1 class="text-3xl font-black mb-12 uppercase italic text-white">INSPECCIONANDO: <span class="text-[var(--aoe-gold)]"><?php echo htmlspecialchars($equipo['nombre_equipo']); ?></span></h1>
+        <h1 class="text-3xl font-black mb-12 uppercase italic text-white"><?php echo $txt['STAFF_VER_INVENTARIO']['TITULO_INSPECCION']; ?> <span class="text-[var(--aoe-gold)]"><?php echo htmlspecialchars($equipo['nombre_equipo']); ?></span></h1>
 
         <div class="mb-20">
-            <h2 class="text-[11px] font-black uppercase tracking-[0.4em] mb-8 text-[#c5a059] border-l-4 border-yellow-900 pl-4">⚓ FLOTAS OPERATIVAS</h2>
+            <h2 class="text-[11px] font-black uppercase tracking-[0.4em] mb-8 text-[#c5a059] border-l-4 border-yellow-900 pl-4"><?php echo $txt['STAFF_VER_INVENTARIO']['TITULO_FLOTAS']; ?></h2>
             <div class="space-y-4">
                 <?php if(empty($flotas_listado)): ?>
-                    <div class="p-10 border border-dashed border-white/5 text-center text-gray-600 text-[10px] font-black uppercase">Sin formaciones detectadas.</div>
+                    <div class="p-10 border border-dashed border-white/5 text-center text-gray-600 text-[10px] font-black uppercase"><?php echo $txt['STAFF_VER_INVENTARIO']['SIN_FLOTAS']; ?></div>
                 <?php else: foreach($flotas_listado as $fl): ?>
                     <div class="fleet-row p-6 flex flex-col md:flex-row justify-between items-center gap-6">
                         <div class="flex items-center gap-8">
-                            <div class="text-center"><span class="stat-label">SLOT</span><div class="text-[#c5a059] font-black text-xl">#<?php echo $fl['slot']; ?></div></div>
-                            <div><span class="stat-label">INSIGNIA</span><div class="text-white font-bold uppercase text-sm"><?php echo htmlspecialchars($fl['insignia']); ?></div></div>
+                            <div class="text-center"><span class="stat-label"><?php echo $txt['STAFF_VER_INVENTARIO']['LBL_SLOT']; ?></span><div class="text-[#c5a059] font-black text-xl">#<?php echo $fl['slot']; ?></div></div>
+                            <div><span class="stat-label"><?php echo $txt['STAFF_VER_INVENTARIO']['LBL_INSIGNIA']; ?></span><div class="text-white font-bold uppercase text-sm"><?php echo htmlspecialchars($fl['insignia']); ?></div></div>
                         </div>
                         <div class="flex flex-wrap gap-2">
                             <?php for($i=1;$i<=4;$i++){ if(!empty($fl['escolta_'.$i])){ echo '<div class="unit-pill">ESC '.$i.': '.htmlspecialchars($fl['escolta_'.$i]).'</div>'; } } ?>
                         </div>
-                        <button onclick="confirmarBorradoFlota(<?php echo $fl['id']; ?>, <?php echo $fl['slot']; ?>)" class="bg-red-950/20 text-red-500 border border-red-900 px-6 py-2 text-[9px] font-black uppercase hover:bg-red-600 transition">DESTRUIR</button>
+                        <button onclick="confirmarBorradoFlota(<?php echo $fl['id']; ?>, <?php echo $fl['slot']; ?>)" class="bg-red-950/20 text-red-500 border border-red-900 px-6 py-2 text-[9px] font-black uppercase hover:bg-red-600 transition"><?php echo $txt['STAFF_VER_INVENTARIO']['BTN_DESTRUIR']; ?></button>
                     </div>
                 <?php endforeach; endif; ?>
             </div>
         </div>
 
         <div class="mb-20">
-            <h2 class="text-[11px] font-black uppercase tracking-[0.4em] mb-8 text-[var(--aoe-gold)] border-l-4 border-yellow-900 pl-4">🏭 ACTIVOS EN HANGAR</h2>
+            <h2 class="text-[11px] font-black uppercase tracking-[0.4em] mb-8 text-[var(--aoe-gold)] border-l-4 border-yellow-900 pl-4"><?php echo $txt['STAFF_VER_INVENTARIO']['TITULO_HANGAR']; ?></h2>
             <div class="space-y-4">
                 <?php ksort($hangar_agrupado); foreach($hangar_agrupado as $tier => $tipos): ?>
                     <div class="tier-container shadow-2xl">
                         <div class="tier-header" onclick="toggleTier(this)">
-                            <h2>RANGO / TIER <?php echo $tier; ?></h2>
+                            <h2><?php echo $txt['STAFF_VER_INVENTARIO']['LBL_TIER']; ?> <?php echo $tier; ?></h2>
                             <span class="text-red-500 font-bold">▼</span>
                         </div>
                         <div class="tier-content p-6 space-y-8 block">
@@ -182,11 +182,11 @@ try {
                                                             </div>
 
                                                             <div class="mt-auto flex justify-between items-center pt-2 border-t border-gray-800/50">
-                                                                <span class="stat-label">STOCK:</span>
+                                                                <span class="stat-label"><?php echo $txt['STAFF_VER_INVENTARIO']['LBL_STOCK']; ?></span>
                                                                 <span class="text-xl font-black text-[#c5a059] font-['Cinzel']"><?php echo $i['stock_actual']; ?>x</span>
                                                             </div>
                                                         </div>
-                                                        <button onclick='abrirModalVehiculo(<?php echo $i_json; ?>)' class="w-full bg-red-800 text-white border-t border-red-600 py-3 text-[10px] font-black uppercase tracking-widest hover:bg-red-500 transition">PURGAR UNIDADES</button>
+                                                        <button onclick='abrirModalVehiculo(<?php echo $i_json; ?>)' class="w-full bg-red-800 text-white border-t border-red-600 py-3 text-[10px] font-black uppercase tracking-widest hover:bg-red-500 transition"><?php echo $txt['STAFF_VER_INVENTARIO']['BTN_PURGAR_UNIDADES']; ?></button>
                                                     </div>
                                                 <?php endforeach; ?>
                                             </div>
@@ -201,12 +201,12 @@ try {
         </div>
 
         <div class="mb-20">
-            <h2 class="text-[11px] font-black uppercase tracking-[0.4em] mb-8 text-blue-400 border-l-4 border-blue-900 pl-4">📜 PATENTES TECNOLÓGICAS</h2>
+            <h2 class="text-[11px] font-black uppercase tracking-[0.4em] mb-8 text-blue-400 border-l-4 border-blue-900 pl-4"><?php echo $txt['STAFF_VER_INVENTARIO']['TITULO_PATENTES']; ?></h2>
             <div class="space-y-4">
                 <?php ksort($patentes_agrupadas); foreach($patentes_agrupadas as $tier => $tipos): ?>
                     <div class="tier-container shadow-2xl">
                         <div class="tier-header" onclick="toggleTier(this)">
-                            <h2>RANGO / TIER <?php echo $tier; ?></h2>
+                            <h2><?php echo $txt['STAFF_VER_INVENTARIO']['LBL_TIER']; ?> <?php echo $tier; ?></h2>
                             <span class="text-red-500 font-bold">▼</span>
                         </div>
                         <div class="tier-content p-6 space-y-8 block">
@@ -227,7 +227,7 @@ try {
                                                 ?>
                                                     <div class="flex-shrink-0 w-64 flex flex-col bg-[#111] border <?php echo $es_prem ? 'card-premium' : 'border-white/5'; ?> relative hover:brightness-110 transition">
                                                         <?php if($es_prem): ?><div class="tag-premium">PREMIUM</div><?php endif; ?>
-                                                        <div class="ownership-tag" title="<?php echo htmlspecialchars($poseedores); ?>">DUEÑOS: <?php echo ($conteo_patentes[$p['id']] ?? 1); ?></div>
+                                                        <div class="ownership-tag" title="<?php echo htmlspecialchars($poseedores); ?>"><?php echo $txt['STAFF_VER_INVENTARIO']['LBL_DUENOS']; ?> <?php echo ($conteo_patentes[$p['id']] ?? 1); ?></div>
                                                         <div class="tag-br">BR: <?php echo htmlspecialchars($p['br'] ?? '1.0'); ?></div>
                                                         <div class="h-28 bg-[#050505]"><img src="../<?php echo $p['imagen_url']; ?>" class="w-full h-full object-cover grayscale opacity-40"></div>
                                                         <div class="p-3 flex-grow flex flex-col">
@@ -244,7 +244,7 @@ try {
                                                                 <div><span class="stat-grid-label block">FUEL</span><span class="stat-grid-value text-yellow-500"><?php echo number_format($p['costo_petroleo']); ?>L</span></div>
                                                             </div>
                                                         </div>
-                                                        <button onclick='abrirModalPatente(<?php echo $p_json; ?>, <?php echo $poseedores_json; ?>)' class="w-full bg-red-950/20 text-red-500 border-t border-red-900 text-[9px] py-3 font-black uppercase hover:bg-red-700 hover:text-white transition">PURGAR TECNOLOGÍA</button>
+                                                        <button onclick='abrirModalPatente(<?php echo $p_json; ?>, <?php echo $poseedores_json; ?>)' class="w-full bg-red-950/20 text-red-500 border-t border-red-900 text-[9px] py-3 font-black uppercase hover:bg-red-700 hover:text-white transition"><?php echo $txt['STAFF_VER_INVENTARIO']['BTN_PURGAR_TECNOLOGIA']; ?></button>
                                                     </div>
                                                 <?php endforeach; ?>
                                             </div>
@@ -262,19 +262,19 @@ try {
     <div id="modalPatente" class="hidden fixed inset-0 bg-black/98 z-[200] flex items-center justify-center p-4 backdrop-blur-md">
         <div class="m-panel w-full max-w-md glass-panel p-10 border-red-500/30 relative">
             <button onclick="cerrarModal('modalPatente')" class="btn-close-modal">&times;</button>
-            <h2 class="text-red-500 font-black text-center text-[10px] uppercase mb-8 tracking-[0.3em]">PURGA ESTRATÉGICA DE PATENTE</h2>
+            <h2 class="text-red-500 font-black text-center text-[10px] uppercase mb-8 tracking-[0.3em]"><?php echo $txt['STAFF_VER_INVENTARIO']['MODAL_PURGA_PATENTE']; ?></h2>
             <div class="text-center mb-6"><span id="p_nombre" class="text-white font-black text-3xl uppercase font-['Cinzel']"></span></div>
-            <div class="bg-blue-900/10 border border-blue-900/30 p-3 text-center mb-8"><span class="stat-label block mb-1 text-blue-500">DISTRIBUCIÓN GLOBAL:</span><span id="p_owners_txt" class="text-white font-bold text-[10px] uppercase leading-relaxed"></span></div>
+            <div class="bg-blue-900/10 border border-blue-900/30 p-3 text-center mb-8"><span class="stat-label block mb-1 text-blue-500"><?php echo $txt['STAFF_VER_INVENTARIO']['LBL_DIST_GLOBAL']; ?></span><span id="p_owners_txt" class="text-white font-bold text-[10px] uppercase leading-relaxed"></span></div>
             <form action="../logic/procesar_reembolso_staff.php" method="POST">
                 <input type="hidden" name="tipo" value="plano"><input type="hidden" name="target_id" id="p_target_id"><input type="hidden" name="equipo_id" value="<?php echo $equipo_id; ?>">
-                <div class="bg-black/40 p-4 border border-white/10 mb-2"><label class="flex items-center gap-4 cursor-pointer"><input type="checkbox" name="reembolsar" value="1" id="p_check_reembolso" checked onchange="togglePRef()" class="w-5 h-5 accent-green-500"><span class="text-[10px] font-black text-gray-300 uppercase">¿DEVOLVER DINERO A LA FACCIÓN?</span></label></div>
-                <div id="p_vehiculos_container" class="bg-red-950/20 p-4 border border-red-900/30 mb-8 hidden"><label class="flex items-center gap-4 cursor-pointer"><input type="checkbox" name="purgar_vehiculos" value="1" id="p_check_vehiculos" onchange="togglePRef()" class="w-5 h-5 accent-red-500"><span class="text-[10px] font-black text-red-400 uppercase">¿PURGAR TAMBIÉN VEHÍCULOS (<span id="p_stock_txt" class="text-white"></span>x)?</span></label></div>
+                <div class="bg-black/40 p-4 border border-white/10 mb-2"><label class="flex items-center gap-4 cursor-pointer"><input type="checkbox" name="reembolsar" value="1" id="p_check_reembolso" checked onchange="togglePRef()" class="w-5 h-5 accent-green-500"><span class="text-[10px] font-black text-gray-300 uppercase"><?php echo $txt['STAFF_VER_INVENTARIO']['LBL_DEV_DINERO']; ?></span></label></div>
+                <div id="p_vehiculos_container" class="bg-red-950/20 p-4 border border-red-900/30 mb-8 hidden"><label class="flex items-center gap-4 cursor-pointer"><input type="checkbox" name="purgar_vehiculos" value="1" id="p_check_vehiculos" onchange="togglePRef()" class="w-5 h-5 accent-red-500"><span class="text-[10px] font-black text-red-400 uppercase"><?php echo $txt['STAFF_VER_INVENTARIO']['LBL_PURGAR_VEH']; ?> (<span id="p_stock_txt" class="text-white"></span>x)?</span></label></div>
                 <div id="p_preview" class="space-y-2 mb-10 text-[10px] font-mono font-black transition-opacity">
                     <div class="flex justify-between p-2 bg-white/5 border border-white/5"><span>CASH</span><div class="flex gap-2"><span id="p_d_old" class="text-gray-500"></span><span id="p_d_add" class="text-green-500"></span><span class="text-white">→</span><span id="p_d_new" class="text-green-500"></span></div></div>
                     <div class="flex justify-between p-2 bg-white/5 border border-white/5"><span>STEEL</span><div class="flex gap-2"><span id="p_a_old" class="text-gray-500"></span><span id="p_a_add" class="text-white"></span><span class="text-white">→</span><span id="p_a_new" class="text-white"></span></div></div>
                     <div class="flex justify-between p-2 bg-white/5 border border-white/5"><span>FUEL</span><div class="flex gap-2"><span id="p_p_old" class="text-gray-500"></span><span id="p_p_add" class="text-yellow-500"></span><span class="text-white">→</span><span id="p_p_new" class="text-yellow-500"></span></div></div>
                 </div>
-                <div class="grid grid-cols-2 gap-4"><button type="submit" class="bg-red-600 text-black py-5 font-black uppercase text-[11px] hover:bg-red-500 transition">CONFIRMAR</button><button type="button" onclick="cerrarModal('modalPatente')" class="border border-white/10 text-gray-500 py-5 font-black uppercase">ABORTAR</button></div>
+                <div class="grid grid-cols-2 gap-4"><button type="submit" class="bg-red-600 text-black py-5 font-black uppercase text-[11px] hover:bg-red-500 transition"><?php echo $txt['BOTONES']['CONFIRMAR']; ?></button><button type="button" onclick="cerrarModal('modalPatente')" class="border border-white/10 text-gray-500 py-5 font-black uppercase"><?php echo $txt['STAFF_VER_INVENTARIO']['BTN_ABORTAR']; ?></button></div>
             </form>
         </div>
     </div>
@@ -282,26 +282,26 @@ try {
     <div id="modalVehiculo" class="hidden fixed inset-0 bg-black/98 z-[200] flex items-center justify-center p-4 backdrop-blur-md">
         <div class="m-panel w-full max-w-lg glass-panel p-10 border-red-500/30 relative">
             <button onclick="cerrarModal('modalVehiculo')" class="btn-close-modal">&times;</button>
-            <h2 class="text-red-500 font-black text-center text-[10px] uppercase mb-10 tracking-[0.3em]">PROTOCOLO DE REINTEGRO TÁCTICO</h2>
-            <div class="bg-black/40 p-4 border border-white/5 mb-8 text-center"><span id="v_nombre" class="text-white font-black text-2xl uppercase font-['Cinzel'] block"></span><span class="text-[9px] text-gray-500 uppercase tracking-widest">STOCK DISPONIBLE: <span id="v_max_txt" class="text-white font-bold"></span></span></div>
+            <h2 class="text-red-500 font-black text-center text-[10px] uppercase mb-10 tracking-[0.3em]"><?php echo $txt['STAFF_VER_INVENTARIO']['MODAL_REINTEGRO']; ?></h2>
+            <div class="bg-black/40 p-4 border border-white/5 mb-8 text-center"><span id="v_nombre" class="text-white font-black text-2xl uppercase font-['Cinzel'] block"></span><span class="text-[9px] text-gray-500 uppercase tracking-widest"><?php echo $txt['STAFF_VER_INVENTARIO']['LBL_STOCK_DISP']; ?> <span id="v_max_txt" class="text-white font-bold"></span></span></div>
             <form action="../logic/procesar_reembolso_staff.php" method="POST">
                 <input type="hidden" name="tipo" value="vehiculo"><input type="hidden" name="target_id" id="v_target_id"><input type="hidden" name="equipo_id" value="<?php echo $equipo_id; ?>"><input type="hidden" name="cantidad_final" id="v_qty_form">
                 <div class="grid grid-cols-2 gap-4 mb-6">
-                    <div><label class="stat-label block mb-2">CANTIDAD A PURGAR</label><input type="number" id="v_qty" value="1" min="1" oninput="calcVImpact()" class="terminal-input text-2xl font-black text-red-500"><div id="v_error_msg" class="text-red-500 text-[9px] font-black uppercase text-center mt-2 hidden animate-pulse">⚠️ SUPERA EL STOCK</div></div>
-                    <div class="flex flex-col justify-end"><label class="flex items-center gap-3 cursor-pointer bg-black/40 p-3 border border-white/10 h-[50px]"><input type="checkbox" name="reembolsar" value="1" id="v_check" checked onchange="calcVImpact()" class="w-4 h-4 accent-green-500"><span class="text-[8px] font-black text-gray-400 uppercase leading-tight">DEVOLVER FONDOS</span></label></div>
+                    <div><label class="stat-label block mb-2"><?php echo $txt['STAFF_VER_INVENTARIO']['LBL_CANT_PURGAR']; ?></label><input type="number" id="v_qty" value="1" min="1" oninput="calcVImpact()" class="terminal-input text-2xl font-black text-red-500"><div id="v_error_msg" class="text-red-500 text-[9px] font-black uppercase text-center mt-2 hidden animate-pulse"><?php echo $txt['STAFF_VER_INVENTARIO']['ERR_SUPERA_STOCK']; ?></div></div>
+                    <div class="flex flex-col justify-end"><label class="flex items-center gap-3 cursor-pointer bg-black/40 p-3 border border-white/10 h-[50px]"><input type="checkbox" name="reembolsar" value="1" id="v_check" checked onchange="calcVImpact()" class="w-4 h-4 accent-green-500"><span class="text-[8px] font-black text-gray-400 uppercase leading-tight"><?php echo $txt['STAFF_VER_INVENTARIO']['LBL_DEV_FONDOS']; ?></span></label></div>
                 </div>
                 <div id="v_preview" class="space-y-2 mb-10 text-[10px] font-mono font-black transition-opacity">
                     <div class="flex justify-between p-2 bg-white/5 border border-white/5"><span>CASH</span><div class="flex gap-2"><span id="v_d_old" class="text-gray-500"></span><span id="v_d_add" class="text-green-500"></span><span class="text-white">→</span><span id="v_d_new" class="text-green-500"></span></div></div>
                     <div class="flex justify-between p-2 bg-white/5 border border-white/5"><span>STEEL</span><div class="flex gap-2"><span id="v_a_old" class="text-gray-500"></span><span id="v_a_add" class="text-white"></span><span class="text-white">→</span><span id="v_a_new" class="text-white"></span></div></div>
                     <div class="flex justify-between p-2 bg-white/5 border border-white/5"><span>FUEL</span><div class="flex gap-2"><span id="v_p_old" class="text-gray-500"></span><span id="v_p_add" class="text-yellow-500"></span><span class="text-white">→</span><span id="v_p_new" class="text-yellow-500"></span></div></div>
                 </div>
-                <div class="grid grid-cols-2 gap-4"><button type="submit" id="btn_v_confirm" class="bg-red-600 text-black py-5 font-black uppercase text-[11px] hover:bg-red-500 transition">EJECUTAR</button><button type="button" onclick="cerrarModal('modalVehiculo')" class="border border-white/10 text-gray-500 py-5 font-black uppercase text-[10px]">ABORTAR</button></div>
+                <div class="grid grid-cols-2 gap-4"><button type="submit" id="btn_v_confirm" class="bg-red-600 text-black py-5 font-black uppercase text-[11px] hover:bg-red-500 transition"><?php echo $txt['STAFF_VER_INVENTARIO']['BTN_EJECUTAR']; ?></button><button type="button" onclick="cerrarModal('modalVehiculo')" class="border border-white/10 text-gray-500 py-5 font-black uppercase text-[10px]"><?php echo $txt['STAFF_VER_INVENTARIO']['BTN_ABORTAR']; ?></button></div>
             </form>
         </div>
     </div>
 
     <div id="modalDestroyFlota" class="hidden fixed inset-0 bg-black/98 z-[300] flex items-center justify-center p-4">
-        <div class="m-panel w-full max-w-md border-red-600 bg-[#0a0a0a] p-10 text-center relative shadow-2xl"><button onclick="cerrarModal('modalDestroyFlota')" class="btn-close-modal">&times;</button><div class="text-red-600 text-5xl mb-6">☢️</div><h2 class="text-white font-black uppercase tracking-[0.2em] mb-4">ANIQUILACIÓN DE FLOTA</h2><p class="text-gray-400 text-xs font-bold leading-relaxed mb-10 uppercase">Confirmar destrucción de la Flota #<span id="txt_slot"></span>.</p><form action="../logic/borrar_flota_staff.php" method="POST"><input type="hidden" name="flota_id" id="hid_flota_id"><input type="hidden" name="lider_id" value="<?php echo $equipo_id; ?>"><button type="submit" class="bg-red-600 text-black w-full py-4 font-black uppercase text-[11px] hover:bg-red-400 transition">EJECUTAR</button></form></div>
+        <div class="m-panel w-full max-w-md border-red-600 bg-[#0a0a0a] p-10 text-center relative shadow-2xl"><button onclick="cerrarModal('modalDestroyFlota')" class="btn-close-modal">&times;</button><div class="text-red-600 text-5xl mb-6">☢️</div><h2 class="text-white font-black uppercase tracking-[0.2em] mb-4"><?php echo $txt['STAFF_VER_INVENTARIO']['MODAL_ANIQ_FLOTA']; ?></h2><p class="text-gray-400 text-xs font-bold leading-relaxed mb-10 uppercase"><?php echo $txt['STAFF_VER_INVENTARIO']['CONFIRM_FLOTA']; ?><span id="txt_slot"></span>.</p><form action="../logic/borrar_flota_staff.php" method="POST"><input type="hidden" name="flota_id" id="hid_flota_id"><input type="hidden" name="lider_id" value="<?php echo $equipo_id; ?>"><button type="submit" class="bg-red-600 text-black w-full py-4 font-black uppercase text-[11px] hover:bg-red-400 transition"><?php echo $txt['STAFF_VER_INVENTARIO']['BTN_EJECUTAR']; ?></button></form></div>
     </div>
 
     <script>
