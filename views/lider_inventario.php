@@ -10,7 +10,16 @@ try {
     $stmt_mio = $pdo->prepare("SELECT * FROM cuentas WHERE id = :id");
     $stmt_mio->execute([':id' => $lider_id]);
     $user = $stmt_mio->fetch(PDO::FETCH_ASSOC);
-    $mis_naciones = !empty($user['naciones_activas']) ? array_map('trim', explode(',', $user['naciones_activas'])) : [];
+    // Obtener las naciones asignadas
+    $naciones_base = !empty($user['naciones_activas']) ? array_map('trim', explode(',', $user['naciones_activas'])) : [];
+    
+    // Obtener naciones de vehículos comprados en mercado negro que el jugador tenga en inventario
+    $stmt_extra = $pdo->prepare("SELECT DISTINCT c.nacion FROM inventario i JOIN catalogo_tienda c ON i.catalogo_id = c.id WHERE i.cuenta_id = :id AND i.cantidad > 0");
+    $stmt_extra->execute([':id' => $lider_id]);
+    $naciones_mercado = $stmt_extra->fetchAll(PDO::FETCH_COLUMN);
+
+    // Unir ambas listas sin repetir nombres
+    $mis_naciones = array_unique(array_merge($naciones_base, $naciones_mercado));
 
     $stmt_tr_check = $pdo->prepare("SELECT COUNT(*) FROM mercado_tradeos WHERE (ofertante_id = :id OR receptor_id = :id) AND estado = 'activo'");
     $stmt_tr_check->execute([':id' => $lider_id]);
@@ -25,8 +34,11 @@ try {
     $reembolsos_activos = $stmt_pend->fetchAll(PDO::FETCH_ASSOC);
 
     $en_proceso = [];
-    foreach($reembolsos_activos as $ra) { $en_proceso[$ra['inventario_id']] = ($en_proceso[$ra['inventario_id']] ?? 0) + $ra['cantidad']; }
-
+    // 1. Sumar los vehículos en solicitudes de reembolso
+    foreach($reembolsos_activos as $ra) { 
+        $en_proceso[$ra['inventario_id']] = ($en_proceso[$ra['inventario_id']] ?? 0) + $ra['cantidad']; 
+    }
+    
     $stmt_f = $pdo->prepare("SELECT * FROM flotas WHERE cuenta_id = :id ORDER BY slot ASC");
     $stmt_f->execute([':id' => $lider_id]);
     $flotas_db = $stmt_f->fetchAll(PDO::FETCH_ASSOC);
@@ -86,7 +98,7 @@ try {
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <title>Hangar y Mercado Central</title>
+    <title><?php echo $txt['LIDER_INVENTARIO']['TITULO_PAGINA']; ?></title>
     <?php include '../includes/head.php'; ?>
     <style>
         .modal-active { overflow: hidden; }
@@ -184,7 +196,7 @@ try {
                                                 $is_premium = isset($item['is_premium']) && $item['is_premium'] == 1;
                                             ?>
                                                 <div class="fila-v flex-shrink-0 w-64 flex flex-col bg-[#111] border <?php echo $is_premium ? 'card-premium' : 'border-[#1a1a1a]'; ?> relative hover:brightness-110 transition shadow-lg" data-nacion="<?php echo $item['nacion']; ?>">
-                                                    <?php if($is_premium): ?><div class="tag-premium">PREMIUM</div><?php endif; ?>
+                                                    <?php if($is_premium): ?><div class="tag-premium"><?php echo $txt['LIDER_INVENTARIO']['TAG_PREMIUM']; ?></div><?php endif; ?>
                                                     <div class="tag-br"><?php echo $txt['LIDER_INVENTARIO']['LBL_BR']; ?> <?php echo htmlspecialchars($item['br'] ?? '1.0'); ?></div>
                                                     
                                                     <div class="h-32 bg-black relative border-b border-gray-800 overflow-hidden">
@@ -217,7 +229,9 @@ try {
                                                     </div>
 
                                                     <div class="p-2 bg-black/80 border-t border-[#1a1a1a]">
-                                                        <?php if(!in_array($item['id'], $mis_planos)): ?>
+                                                        <?php if(!in_array($item['id'], $mis_planos) && $stock_neto > 0): ?>
+                                                            <button onclick='abrirModalReembolso(<?php echo $item_json; ?>)' class="btn-m w-full !py-2.5 !text-[9px] !bg-purple-900/20 !text-purple-400 border-purple-900 font-black uppercase hover:bg-purple-700 hover:text-white transition tracking-widest"><?php echo $txt['LIDER_INVENTARIO']['BTN_IMPORTADO']; ?></button>
+                                                        <?php elseif(!in_array($item['id'], $mis_planos)): ?>
                                                             <div class="py-2.5 text-center text-[9px] text-red-600 font-black uppercase border border-red-900/30 bg-red-950/10"><?php echo $txt['LIDER_INVENTARIO']['BTN_REQ_PATENTE']; ?></div>
                                                         <?php elseif($stock_neto <= 0): ?>
                                                             <div class="py-2.5 text-center text-[9px] text-gray-700 font-black uppercase border border-white/5"><?php echo $txt['LIDER_INVENTARIO']['BTN_SIN_ACTIVOS']; ?></div>
@@ -281,9 +295,55 @@ try {
         </div>
     </div>
 
+    <div id="modalDecisionTradeo" class="hidden fixed inset-0 bg-black/98 z-[300] flex items-center justify-center p-4 backdrop-blur-md">
+        <div class="m-panel w-full max-w-md border-blue-600 bg-[#0a0a0a] p-10 relative shadow-2xl">
+            <button onclick="cerrarModal('modalDecisionTradeo')" class="btn-close-modal">&times;</button>
+            <h2 class="text-blue-500 font-black text-center text-[10px] uppercase mb-8 tracking-[0.3em]"><?php echo $txt['LIDER_INVENTARIO']['MODAL_DECISION_TIT']; ?></h2>
+            
+            <div class="text-center mb-8">
+                <span class="stat-label"><?php echo $txt['LIDER_INVENTARIO']['LBL_REMITENTE']; ?></span>
+                <div id="dec_remitente" class="text-white font-black text-2xl uppercase font-['Cinzel']"></div>
+            </div>
+            
+            <div class="bg-black/60 border border-white/5 p-6 mb-10 text-center">
+                <div id="dec_contenido" class="space-y-3 font-mono font-black text-sm uppercase"></div>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4">
+                <form id="formAceptarTradeo" action="../logic/procesar_tradeo.php" method="POST">
+                    <input type="hidden" name="accion" value="aceptar">
+                    <input type="hidden" id="dec_id_acep" name="tradeo_id">
+                    <button type="button" onclick="abrirModalConfirmacion()" class="w-full bg-green-600 text-black py-5 font-black uppercase text-[11px] hover:bg-green-500 transition shadow-lg">
+                        <?php echo $txt['LIDER_INVENTARIO']['BTN_ACEPTAR']; ?>
+                    </button>
+                </form>
+                <form action="../logic/procesar_tradeo.php" method="POST">
+                    <input type="hidden" name="accion" value="rechazar">
+                    <input type="hidden" id="dec_id_rech" name="tradeo_id">
+                    <button type="submit" class="w-full border border-red-600 text-red-500 py-5 font-black uppercase text-[11px] hover:bg-red-900 transition">
+                        <?php echo $txt['LIDER_INVENTARIO']['BTN_RECHAZAR']; ?>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <div id="modalHistorial" class="hidden fixed inset-0 bg-black/95 z-[100] flex items-center justify-center p-4"><div class="m-panel w-full max-w-2xl border-red-800 bg-[#0d0e0a] p-10 relative shadow-2xl"><button onclick="cerrarModal('modalHistorial')" class="btn-close-modal">&times;</button><h2 class="text-red-500 font-black text-center text-[10px] uppercase mb-8 border-b border-red-900/50 pb-2 tracking-widest"><?php echo $txt['LIDER_INVENTARIO']['MODAL_PETICIONES_TIT']; ?></h2><div class="space-y-4 max-h-[50vh] overflow-y-auto pr-2"><?php if(empty($reembolsos_activos)): ?><p class="text-center text-gray-600 uppercase font-black text-xs py-10"><?php echo $txt['LIDER_INVENTARIO']['MSG_SIN_PETICIONES']; ?></p><?php else: foreach($reembolsos_activos as $ra): ?><div class="flex justify-between items-center bg-black/40 p-4 border border-white/5 group hover:border-red-900 transition"><div><span class="text-white font-black uppercase text-sm"><?php echo htmlspecialchars($ra['nombre_vehiculo']); ?></span><span class="text-red-500 font-black ml-4">x<?php echo $ra['cantidad']; ?></span></div><form action="../logic/cancelar_reembolso.php" method="POST"><input type="hidden" name="id" value="<?php echo $ra['id']; ?>"><button type="submit" class="bg-red-900/20 text-red-500 border border-red-900 px-5 py-2 text-[9px] font-black uppercase hover:bg-red-700 hover:text-white transition"><?php echo $txt['LIDER_INVENTARIO']['BTN_CANCELAR']; ?></button></form></div><?php endforeach; endif; ?></div></div></div>
     <div id="modalReembolso" class="hidden fixed inset-0 bg-black/95 z-[100] flex items-center justify-center p-4"><div class="m-panel w-full max-w-md border-red-800 bg-[#0d0e0a] p-10 shadow-2xl relative"><button onclick="cerrarModal('modalReembolso')" class="btn-close-modal">&times;</button><h2 class="text-red-500 font-black text-center text-[10px] uppercase mb-10 border-b border-red-900/50 pb-2 tracking-widest"><?php echo $txt['LIDER_INVENTARIO']['MODAL_REEMBOLSO_TIT']; ?></h2><form action="../logic/solicitar_reembolso.php" method="POST"><input type="hidden" id="re_inv_id" name="inventario_id"><div class="text-center mb-8"><span id="re_nombre" class="text-white font-black uppercase text-2xl"></span></div><div class="mb-4 text-center"><label class="stat-label block mb-2"><?php echo $txt['LIDER_INVENTARIO']['LBL_CANT_DISP']; ?> <span id="re_max_display" class="text-white"></span></label><input type="number" id="re_qty" name="cantidad" value="1" min="1" oninput="calcReMath()" class="f-input !text-4xl py-6 text-center font-black"></div><div id="re_stock_error" class="hidden text-red-500 text-[10px] font-black uppercase text-center mb-6 animate-pulse"><?php echo $txt['LIDER_INVENTARIO']['ERR_CANT_SUPERA']; ?></div><div class="bg-red-950/20 p-6 border border-red-900/30 text-center mb-10"><div class="flex justify-around font-black font-mono"><div><span class="stat-label !mb-1"><?php echo $txt['LIDER_INVENTARIO']['LBL_CASH']; ?></span><span id="re_res_d" class="text-green-500 text-xl">$0</span></div><div><span class="stat-label !mb-1"><?php echo $txt['LIDER_INVENTARIO']['LBL_STEEL']; ?></span><span id="re_res_a" class="text-white text-xl">0T</span></div><div><span class="stat-label !mb-1"><?php echo $txt['LIDER_INVENTARIO']['LBL_FUEL']; ?></span><span id="re_res_p" class="text-yellow-500 text-xl">0L</span></div></div></div><button type="submit" id="btnEnviarRe" class="btn-m w-full py-5 !bg-red-700 !text-white border-red-500 font-black uppercase"><?php echo $txt['LIDER_INVENTARIO']['BTN_ENVIAR_PETICION']; ?></button></form></div></div>
     <div id="modalError" class="hidden fixed inset-0 bg-black/98 z-[300] flex items-center justify-center p-4"><div class="m-panel w-full max-w-sm border-red-600 bg-[#120505] p-10 text-center shadow-2xl relative"><button onclick="cerrarModal('modalError')" class="btn-close-modal">&times;</button><div class="text-red-500 text-5xl mb-6">⚠️</div><h3 class="text-white font-black uppercase tracking-widest mb-4"><?php echo $txt['LIDER_INVENTARIO']['MODAL_ERROR_TIT']; ?></h3><p id="error_msg_text" class="text-gray-400 text-xs uppercase font-bold mb-8 leading-relaxed"></p><button onclick="cerrarModal('modalError')" class="btn-m w-full !bg-red-900/20 !border-red-600 !text-red-500 py-3 font-black uppercase"><?php echo $txt['LIDER_INVENTARIO']['BTN_ENTENDIDO']; ?></button></div></div>
+
+    <div id="modalConfirmarAceptacion" class="hidden fixed inset-0 bg-black/98 z-[400] flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="m-panel w-full max-w-sm border-green-600 bg-[#0a0a0a] p-8 text-center relative shadow-2xl">
+            <div class="text-green-500 text-5xl mb-4">🤝</div>
+            <h2 class="text-white font-black uppercase tracking-[0.2em] mb-4 text-sm"><?php echo $txt['LIDER_INVENTARIO']['MODAL_CONFIRMAR_TIT']; ?></h2>
+            <p class="text-gray-400 text-xs font-bold leading-relaxed mb-8 uppercase"><?php echo $txt['LIDER_INVENTARIO']['MODAL_CONFIRMAR_DESC']; ?></p>
+            
+            <div class="flex gap-4">
+                <button type="button" onclick="enviarFormularioAceptar()" class="flex-1 bg-green-600 text-black py-3 font-black uppercase text-[10px] hover:bg-green-500 transition tracking-widest"><?php echo $txt['LIDER_INVENTARIO']['BTN_SI_FIRMAR']; ?></button>
+                <button type="button" onclick="cerrarModal('modalConfirmarAceptacion')" class="flex-1 border border-gray-600 text-gray-500 py-3 font-black uppercase text-[10px] hover:bg-gray-800 hover:text-white transition tracking-widest"><?php echo $txt['LIDER_INVENTARIO']['BTN_CANCELAR']; ?></button>
+            </div>
+        </div>
+    </div>
 
     <div id="modalMercado" class="hidden fixed inset-0 bg-black/98 z-[150] flex items-center justify-center p-4">
         <div class="m-panel w-full max-w-3xl h-auto max-h-[90vh] relative border-blue-900 overflow-hidden flex flex-col shadow-2xl">
@@ -311,17 +371,14 @@ try {
                     </div>
                     <div class="space-y-4">
                         <h3 class="text-blue-500 font-black text-[10px] uppercase mb-2 tracking-widest text-center border-b border-blue-900/30 pb-2"><?php echo $txt['LIDER_INVENTARIO']['PASO_2_OFERTA']; ?></h3>
-                        <div class="flex gap-2 mb-6 bg-black/40 p-2 border border-gray-800">
-                            <button type="button" onclick="setModoOferta('recursos')" id="btn_modo_recursos" class="btn-modo flex-1 py-3 bg-blue-900/20 border border-blue-500 text-white text-[9px] font-black uppercase"><?php echo $txt['LIDER_INVENTARIO']['MODO_RECURSOS']; ?></button>
-                            <button type="button" onclick="setModoOferta('vehiculo')" id="btn_modo_vehiculo" class="btn-modo flex-1 py-3 bg-[#050505] border border-transparent text-gray-600 text-[9px] font-black uppercase hover:text-gray-300"><?php echo $txt['LIDER_INVENTARIO']['MODO_VEHICULO']; ?></button>
-                            <button type="button" onclick="setModoOferta('mixto')" id="btn_modo_mixto" class="btn-modo flex-1 py-3 bg-[#050505] border border-transparent text-gray-600 text-[9px] font-black uppercase hover:text-gray-300"><?php echo $txt['LIDER_INVENTARIO']['MODO_MIXTO']; ?></button>
-                        </div>
-                        <div id="sec_recursos" class="grid grid-cols-3 gap-4 transition-opacity">
+                        
+                        <div id="sec_recursos" class="grid grid-cols-3 gap-4">
                             <div class="text-center"><label class="stat-label block mb-2"><?php echo $txt['LIDER_INVENTARIO']['LBL_CASH']; ?></label><input type="number" name="ofrece_dinero" id="off_d" value="0" min="0" oninput="projBal()" class="f-input !p-3 !text-lg text-green-500 text-center font-black"><div class="mt-2"><span id="bal_d" class="balance-pill text-green-500"><?php echo $txt['LIDER_INVENTARIO']['LBL_SALDO']; ?> $<?php echo number_format($user['dinero']); ?></span></div></div>
                             <div class="text-center"><label class="stat-label block mb-2"><?php echo $txt['LIDER_INVENTARIO']['LBL_STEEL']; ?></label><input type="number" name="ofrece_acero" id="off_a" value="0" min="0" oninput="projBal()" class="f-input !p-3 !text-lg text-white text-center font-black"><div class="mt-2"><span id="bal_a" class="balance-pill text-white"><?php echo $txt['LIDER_INVENTARIO']['LBL_SALDO']; ?> <?php echo $user['acero']; ?>T</span></div></div>
                             <div class="text-center"><label class="stat-label block mb-2"><?php echo $txt['LIDER_INVENTARIO']['LBL_FUEL']; ?></label><input type="number" name="ofrece_petroleo" id="off_p" value="0" min="0" oninput="projBal()" class="f-input !p-3 !text-lg text-yellow-500 text-center font-black"><div class="mt-2"><span id="bal_p" class="balance-pill text-yellow-500"><?php echo $txt['LIDER_INVENTARIO']['LBL_SALDO']; ?> <?php echo $user['petroleo']; ?>L</span></div></div>
                         </div>
-                        <div id="sec_vehiculo" class="bg-black/40 p-5 border border-white/5 mt-6 transition-opacity opacity-30 pointer-events-none">
+
+                        <div id="sec_vehiculo" class="bg-black/40 p-5 border border-white/5 mt-4">
                             <label class="stat-label block mb-3 text-blue-400"><?php echo $txt['LIDER_INVENTARIO']['LBL_TRANSFERIR_VEH']; ?></label>
                             <div class="flex gap-4 items-center">
                                 <select name="vehiculo_ofrecido_id" id="select_mio" onchange="actualizarOfertaMio()" class="f-input !text-[11px] flex-grow !p-3 font-black uppercase">
@@ -330,8 +387,24 @@ try {
                                 </select>
                             </div>
                             <div id="mio_extra" class="hidden mt-4 bg-[#0a0a0a] border border-gray-800 p-4">
-                                <div class="flex justify-between items-center mb-4 border-b border-gray-800 pb-3"><span class="stat-label !text-blue-500"><?php echo $txt['LIDER_INVENTARIO']['LBL_VALOR_ACTIVO']; ?></span><div id="mio_valor" class="flex gap-4 text-[11px] font-black tracking-widest font-mono"></div></div>
-                                <div class="flex items-center justify-between"><span class="stat-label"><?php echo $txt['LIDER_INVENTARIO']['LBL_CANT_TRANSFERIR']; ?></span><input type="number" name="cantidad_ofrecida" id="ofre_qty" value="1" min="1" oninput="multiValMio()" class="w-24 f-input !text-blue-400 text-center !p-2 font-black text-xl"></div>
+                                <div class="flex justify-between items-center mb-4 border-b border-gray-800 pb-3">
+                                    <span class="stat-label !text-blue-500"><?php echo $txt['LIDER_INVENTARIO']['LBL_VALOR_ACTIVO']; ?></span>
+                                    <div id="mio_valor" class="flex gap-4 text-[11px] font-black tracking-widest font-mono text-right"></div>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="stat-label"><?php echo $txt['LIDER_INVENTARIO']['LBL_CANT_TRANSFERIR']; ?></span>
+                                    <input type="number" name="cantidad_ofrecida" id="ofre_qty" value="1" min="1" oninput="multiValMio()" class="w-24 f-input !text-blue-400 text-center !p-2 font-black text-xl">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-6 p-5 border border-blue-900/30 bg-[#050505]">
+                            <h3 class="text-blue-500 font-black text-[10px] uppercase mb-4 tracking-widest text-center border-b border-blue-900/30 pb-2"><?php echo $txt['LIDER_INVENTARIO']['PASO_3_PIDES']; ?></h3>
+                            <p class="text-gray-500 text-[9px] uppercase text-center mb-4"><?php echo $txt['LIDER_INVENTARIO']['PASO_3_DESC']; ?></p>
+                            <div class="grid grid-cols-3 gap-4">
+                                <div class="text-center"><label class="stat-label block mb-2"><?php echo $txt['LIDER_INVENTARIO']['LBL_DINERO_SOLO']; ?></label><input type="number" name="requiere_dinero" id="req_d" value="0" min="0" class="f-input !p-3 !text-lg text-red-500 text-center font-black"></div>
+                                <div class="text-center"><label class="stat-label block mb-2"><?php echo $txt['LIDER_INVENTARIO']['LBL_ACERO_SOLO']; ?></label><input type="number" name="requiere_acero" id="req_a" value="0" min="0" class="f-input !p-3 !text-lg text-red-400 text-center font-black"></div>
+                                <div class="text-center"><label class="stat-label block mb-2"><?php echo $txt['LIDER_INVENTARIO']['LBL_PETROLEO_SOLO']; ?></label><input type="number" name="requiere_petroleo" id="req_p" value="0" min="0" class="f-input !p-3 !text-lg text-orange-500 text-center font-black"></div>
                             </div>
                         </div>
                     </div>
@@ -339,20 +412,39 @@ try {
                 </form>
             </div>
             <div id="sec_m_ordenes" class="hidden flex-grow overflow-y-auto p-10 bg-[#05070a]">
-                <?php if(empty($mis_ordenes)): ?><p class="text-center text-gray-600 uppercase font-black text-xs py-10"><?php echo $txt['LIDER_INVENTARIO']['MSG_SIN_OFERTAS']; ?></p><?php else: foreach($mis_ordenes as $o): ?>
+                <?php if(empty($mis_ordenes)): ?>
+                    <p class="text-center text-gray-600 uppercase font-black text-xs py-10"><?php echo $txt['LIDER_INVENTARIO']['MSG_SIN_OFERTAS']; ?></p>
+                <?php else: foreach($mis_ordenes as $o): ?>
                     <div class="m-panel bg-black/60 border-l-4 border-l-blue-600 p-6 flex justify-between items-center mb-4">
                         <div class="flex-grow pr-6">
-                            <span class="stat-label block mb-1 uppercase font-bold"><?php echo $txt['LIDER_INVENTARIO']['LBL_ENVIADO_A']; ?> <?php echo htmlspecialchars($o['receptor']); ?></span>
-                            <div class="mt-3 pt-3 border-t border-blue-900/30">
-                                <div class="flex flex-wrap gap-4 text-[11px] font-black font-mono">
-                                    <?php if($o['ofrece_dinero'] > 0): ?><span class="text-green-500">$<?php echo number_format($o['ofrece_dinero']); ?></span><?php endif; ?>
-                                    <?php if($o['ofrece_acero'] > 0): ?><span class="text-white"><?php echo number_format($o['ofrece_acero']); ?>T</span><?php endif; ?>
-                                    <?php if($o['ofrece_petroleo'] > 0): ?><span class="text-yellow-500"><?php echo number_format($o['ofrece_petroleo']); ?>L</span><?php endif; ?>
-                                    <?php if(!empty($o['v_ofrecido'])): ?><span class="text-blue-400 bg-blue-900/20 px-2 py-1 rounded border border-blue-900/50"><?php echo htmlspecialchars($o['v_ofrecido']); ?> (x<?php echo $o['cantidad_ofrecida']; ?>)</span><?php endif; ?>
+                            <span class="stat-label block mb-2 uppercase font-bold text-blue-500"><?php echo $txt['LIDER_INVENTARIO']['LBL_ENVIADO_A']; ?> <?php echo htmlspecialchars($o['receptor']); ?></span>
+                            
+                            <div class="mt-2 pt-2 border-t border-blue-900/30">
+                                <span class="text-[8px] text-gray-500 uppercase tracking-widest block mb-1"><?php echo $txt['LIDER_INVENTARIO']['PASO_2_OFERTA']; ?>:</span>
+                                <div class="flex flex-wrap gap-3 text-[10px] font-black font-mono">
+                                    <?php if($o['ofrece_dinero'] > 0): ?><span class="text-green-500">+$<?php echo number_format($o['ofrece_dinero']); ?></span><?php endif; ?>
+                                    <?php if($o['ofrece_acero'] > 0): ?><span class="text-white">+<?php echo number_format($o['ofrece_acero']); ?>T</span><?php endif; ?>
+                                    <?php if($o['ofrece_petroleo'] > 0): ?><span class="text-yellow-500">+<?php echo number_format($o['ofrece_petroleo']); ?>L</span><?php endif; ?>
+                                    <?php if(!empty($o['v_ofrecido'])): ?><span class="text-blue-400 bg-blue-900/20 px-2 py-0.5 rounded border border-blue-900/50">+<?php echo htmlspecialchars($o['v_ofrecido']); ?> (x<?php echo $o['cantidad_ofrecida']; ?>)</span><?php endif; ?>
+                                </div>
+                            </div>
+
+                            <div class="mt-2 pt-2 border-t border-gray-800">
+                                <span class="text-[8px] text-gray-500 uppercase tracking-widest block mb-1"><?php echo $txt['LIDER_INVENTARIO']['LBL_GANARAS']; ?></span>
+                                <div class="flex flex-wrap gap-3 text-[10px] font-black font-mono">
+                                    <?php 
+                                    $pide_algo = false;
+                                    if($o['pide_dinero'] > 0): $pide_algo = true; ?><span class="text-green-500">+$<?php echo number_format($o['pide_dinero']); ?></span><?php endif; ?>
+                                    <?php if($o['pide_acero'] > 0): $pide_algo = true; ?><span class="text-white">+<?php echo number_format($o['pide_acero']); ?>T</span><?php endif; ?>
+                                    <?php if($o['pide_petroleo'] > 0): $pide_algo = true; ?><span class="text-yellow-500">+<?php echo number_format($o['pide_petroleo']); ?>L</span><?php endif; ?>
+                                    <?php if(!$pide_algo): ?><span class="text-green-600 bg-green-900/20 px-2 py-0.5 rounded border border-green-500/30"><?php echo $txt['LIDER_INVENTARIO']['LBL_REGALO']; ?></span><?php endif; ?>
                                 </div>
                             </div>
                         </div>
-                        <button type="button" onclick="confirmarCancelarTradeo(<?php echo $o['id']; ?>)" class="bg-red-900/20 text-red-500 border border-red-900 px-6 py-2 text-[10px] font-black uppercase hover:bg-red-700 transition"><?php echo $txt['LIDER_INVENTARIO']['BTN_CANCELAR']; ?></button>
+                        
+                        <button type="button" onclick="confirmarCancelarTradeo(<?php echo $o['id']; ?>)" class="bg-red-900/20 text-red-500 border border-red-900 px-6 py-2 text-[10px] font-black uppercase hover:bg-red-700 hover:text-white transition">
+                            <?php echo $txt['LIDER_INVENTARIO']['BTN_CANCELAR']; ?>
+                        </button>
                     </div>
                 <?php endforeach; endif; ?>
             </div>
@@ -364,39 +456,6 @@ try {
                         <button onclick='abrirDecisionTradeo(<?php echo $or_json; ?>)' class="btn-m !bg-blue-600 !text-white px-6 py-2 text-[10px] font-black uppercase"><?php echo $txt['LIDER_INVENTARIO']['BTN_REVISAR_PROP']; ?></button>
                     </div>
                 <?php endforeach; endif; ?>
-            </div>
-        </div>
-    </div>
-
-    <div id="modalFlota" class="hidden fixed inset-0 bg-black/95 z-[100] flex items-center justify-center p-4">
-        <div class="m-panel w-full max-w-lg border-blue-900 bg-[#0d0e0a] p-10 shadow-2xl relative">
-            <button onclick="cerrarModal('modalFlota')" class="btn-close-modal">&times;</button>
-            <h2 class="text-white font-black uppercase mb-8 border-b border-gray-800 pb-4 tracking-widest text-center"><?php echo $txt['LIDER_INVENTARIO']['MODAL_CONF_FLOTA_TIT']; ?><span id="slot_num"></span></h2>
-            <form action="../logic/actualizar_flota.php" method="POST" class="space-y-6">
-                <input type="hidden" name="slot" id="slot_input">
-                <div><label class="stat-label"><?php echo $txt['LIDER_INVENTARIO']['LBL_UNIDAD_INSIGNIA']; ?></label><input type="text" name="insignia" id="in_ins" required class="f-input" placeholder="..."></div>
-                <div class="grid grid-cols-2 gap-4">
-                    <?php for($e=1;$e<=4;$e++): ?>
-                        <div><label class="stat-label"><?php echo $txt['LIDER_INVENTARIO']['LBL_ESCOLTA_NUM']; ?><?php echo $e; ?></label><input type="text" name="escolta_<?php echo $e; ?>" id="in_e<?php echo $e; ?>" class="f-input" placeholder="..."></div>
-                    <?php endfor; ?>
-                </div>
-                <div class="flex gap-4 pt-6">
-                    <button type="submit" class="btn-m flex-1 !bg-blue-600 !text-white !py-4 font-black"><?php echo $txt['LIDER_INVENTARIO']['BTN_GRABAR_FLOTA']; ?></button>
-                    <button type="button" onclick="cerrarModal('modalFlota')" class="px-8 border border-white/10 text-gray-500 font-black text-[10px]"><?php echo $txt['LIDER_INVENTARIO']['BTN_CANCELAR']; ?></button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <div id="modalDecisionTradeo" class="hidden fixed inset-0 bg-black/98 z-[300] flex items-center justify-center p-4 backdrop-blur-md">
-        <div class="m-panel w-full max-w-md border-blue-600 bg-[#0a0a0a] p-10 relative shadow-2xl">
-            <button onclick="cerrarModal('modalDecisionTradeo')" class="btn-close-modal">&times;</button>
-            <h2 class="text-blue-500 font-black text-center text-[10px] uppercase mb-8 tracking-[0.3em]"><?php echo $txt['LIDER_INVENTARIO']['MODAL_DECISION_TIT']; ?></h2>
-            <div class="text-center mb-8"><span class="stat-label"><?php echo $txt['LIDER_INVENTARIO']['LBL_REMITENTE']; ?></span><div id="dec_remitente" class="text-white font-black text-2xl uppercase font-['Cinzel']"></div></div>
-            <div class="bg-black/60 border border-white/5 p-6 mb-10 text-center"><div id="dec_contenido" class="space-y-3 font-mono font-black text-lg uppercase"></div></div>
-            <div class="grid grid-cols-2 gap-4">
-                <form action="../logic/procesar_tradeo.php" method="POST"><input type="hidden" name="accion" value="aceptar"><input type="hidden" id="dec_id_acep" name="tradeo_id"><button type="submit" class="w-full bg-green-600 text-black py-5 font-black uppercase text-[11px] hover:bg-green-500 transition shadow-lg"><?php echo $txt['LIDER_INVENTARIO']['BTN_ACEPTAR']; ?></button></form>
-                <form action="../logic/procesar_tradeo.php" method="POST"><input type="hidden" name="accion" value="rechazar"><input type="hidden" id="dec_id_rech" name="tradeo_id"><button type="submit" class="w-full border border-red-600 text-red-500 py-5 font-black uppercase text-[11px] hover:bg-red-900 transition"><?php echo $txt['LIDER_INVENTARIO']['BTN_RECHAZAR']; ?></button></form>
             </div>
         </div>
     </div>
@@ -416,8 +475,33 @@ try {
         }
         
         function setNacion(n) { nacActual = n; document.querySelectorAll('.tab-nacion').forEach(b => b.classList.toggle('active', b.dataset.nacion === n)); aplicarFiltros(); }
-        function setSeccion(s) { if(s === 'flotas') { document.getElementById('cont_hangar').style.display = 'none'; document.getElementById('cont_flotas').classList.remove('hidden'); } else { tipoActual = s; document.getElementById('cont_hangar').style.display = 'block'; document.getElementById('cont_flotas').classList.add('hidden'); aplicarFiltros(); } document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.id === 'nav_'+s)); }
-        
+        function setSeccion(s) { 
+            if(s === 'flotas') { 
+                document.getElementById('cont_hangar').style.display = 'none'; 
+                document.getElementById('cont_flotas').classList.remove('hidden'); 
+                
+                // APAGAR los botones de naciones porque las flotas son GLOBALES
+                document.querySelectorAll('.tab-nacion').forEach(b => {
+                    b.style.opacity = '0.2';
+                    b.style.pointerEvents = 'none';
+                });
+                
+            } else { 
+                tipoActual = s; 
+                document.getElementById('cont_hangar').style.display = 'block'; 
+                document.getElementById('cont_flotas').classList.add('hidden'); 
+                
+                // ENCENDER los botones de naciones al volver al hangar
+                document.querySelectorAll('.tab-nacion').forEach(b => {
+                    b.style.opacity = '1';
+                    b.style.pointerEvents = 'auto';
+                });
+                
+                aplicarFiltros(); 
+            } 
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.id === 'nav_'+s)); 
+        }
+
         function aplicarFiltros() {
             let total = 0;
             document.querySelectorAll('.tier-container').forEach(tier => {
@@ -465,12 +549,34 @@ try {
             document.getElementById('dec_id_acep').value = data.id;
             document.getElementById('dec_id_rech').value = data.id;
             document.getElementById('dec_remitente').innerText = data.remitente;
-            let h = "";
-            if(parseInt(data.ofrece_dinero) > 0) h += `<div class='text-green-500'>$${parseInt(data.ofrece_dinero).toLocaleString()}</div>`;
-            if(parseInt(data.ofrece_acero) > 0) h += `<div class='text-white'>${data.ofrece_acero}T <?php echo $txt['LIDER_INVENTARIO']['LBL_STEEL']; ?></div>`;
-            if(parseInt(data.ofrece_petroleo) > 0) h += `<div class='text-yellow-500'>${data.ofrece_petroleo}L <?php echo $txt['LIDER_INVENTARIO']['LBL_FUEL']; ?></div>`;
-            if(data.v_ofrecido_nombre) h += `<div class='text-blue-400 mt-2 border-t border-white/5 pt-2'>1x ${data.v_ofrecido_nombre}</div>`;
-            document.getElementById('dec_contenido').innerHTML = h;
+            
+            let hRecibe = "";
+            if(parseInt(data.ofrece_dinero) > 0) hRecibe += `<div class='text-green-500'>+ $${parseInt(data.ofrece_dinero).toLocaleString()}</div>`;
+            if(parseInt(data.ofrece_acero) > 0) hRecibe += `<div class='text-white'>+ ${data.ofrece_acero}T <?php echo $txt['LIDER_INVENTARIO']['LBL_ACERO_TXT']; ?></div>`;
+            if(parseInt(data.ofrece_petroleo) > 0) hRecibe += `<div class='text-yellow-500'>+ ${data.ofrece_petroleo}L <?php echo $txt['LIDER_INVENTARIO']['LBL_PETROLEO_TXT']; ?></div>`;
+            if(data.v_ofrecido_nombre) hRecibe += `<div class='text-blue-400 mt-2 border-t border-white/5 pt-2'>+ ${data.cantidad_ofrecida}x ${data.v_ofrecido_nombre}</div>`;
+            
+            if(hRecibe === "") hRecibe = "<div class='text-gray-600 text-[10px]'><?php echo $txt['LIDER_INVENTARIO']['LBL_NINGUNO']; ?></div>";
+
+            let hDa = "";
+            if(parseInt(data.pide_dinero) > 0) hDa += `<div class='text-red-500'>- $${parseInt(data.pide_dinero).toLocaleString()}</div>`;
+            if(parseInt(data.pide_acero) > 0) hDa += `<div class='text-red-400'>- ${data.pide_acero}T <?php echo $txt['LIDER_INVENTARIO']['LBL_ACERO_TXT']; ?></div>`;
+            if(parseInt(data.pide_petroleo) > 0) hDa += `<div class='text-orange-500'>- ${data.pide_petroleo}L <?php echo $txt['LIDER_INVENTARIO']['LBL_PETROLEO_TXT']; ?></div>`;
+            if(data.v_requerido_nombre) hDa += `<div class='text-blue-400 mt-2 border-t border-white/5 pt-2'>- ${data.cantidad_requerida}x ${data.v_requerido_nombre}</div>`;
+            
+            if(hDa === "") hDa = "<div class='text-green-400 text-xs font-black uppercase bg-green-900/20 inline-block px-2 py-1 border border-green-500/50 mt-1'><?php echo $txt['LIDER_INVENTARIO']['LBL_ES_REGALO']; ?></div>";
+
+            document.getElementById('dec_contenido').innerHTML = `
+                <div class="mb-4 text-left">
+                    <span class="text-blue-500 text-[9px] uppercase tracking-widest block mb-2"><?php echo $txt['LIDER_INVENTARIO']['LBL_RECIBIRAS']; ?></span>
+                    ${hRecibe}
+                </div>
+                <div class="border-t border-gray-800 pt-4 text-left">
+                    <span class="text-red-500 text-[9px] uppercase tracking-widest block mb-2"><?php echo $txt['LIDER_INVENTARIO']['LBL_PAGARAS']; ?></span>
+                    ${hDa}
+                </div>
+            `;
+            
             abrirModal('modalDecisionTradeo');
         }
 
@@ -481,14 +587,96 @@ try {
         function desmantelarFlotaLider(e, id, slot) { e.stopPropagation(); document.getElementById('del_flota_id').value = id; document.getElementById('txt_del_slot').innerText = slot; abrirModal('modalDestroyFlota'); }
 
         function seleccionarRival(r) { rSel = r; document.querySelectorAll('.btn-rival-selector').forEach(b => { b.classList.remove('active', 'border-blue-500', 'bg-blue-900/20'); b.classList.add('border-gray-800', 'bg-[#0a0a0a]'); }); const btn = document.getElementById('btn-rival-'+r.id); btn.classList.remove('border-gray-800', 'bg-[#0a0a0a]'); btn.classList.add('active', 'border-blue-500', 'bg-blue-900/20'); document.getElementById('t_receptor_id').value = r.id; document.getElementById('rival_seleccionado_box').classList.remove('hidden'); document.getElementById('rival_seleccionado_txt').innerText = r.nombre_equipo; const btnEnviar = document.getElementById('btn_enviar_trato'); btnEnviar.disabled = false; btnEnviar.classList.remove('!bg-gray-800', '!text-gray-500', 'border-gray-600', 'cursor-not-allowed'); btnEnviar.classList.add('!bg-blue-600', '!text-white', '!border-blue-400'); btnEnviar.innerText = "<?php echo $txt['LIDER_INVENTARIO']['BTN_ENVIAR_PROPUESTA']; ?>"; }
-        function setModoOferta(modo) { modoOferta = modo; document.querySelectorAll('.btn-modo').forEach(b => { b.classList.remove('bg-blue-900/20', 'border-blue-500', 'text-white'); b.classList.add('bg-[#050505]', 'border-transparent', 'text-gray-600'); }); const btnActivo = document.getElementById('btn_modo_'+modo); btnActivo.classList.remove('bg-[#050505]', 'border-transparent', 'text-gray-600'); btnActivo.classList.add('bg-blue-900/20', 'border-blue-500', 'text-white'); const secR = document.getElementById('sec_recursos'); const secV = document.getElementById('sec_vehiculo'); if(modo === 'recursos') { secR.style.opacity = '1'; secR.style.pointerEvents = 'auto'; secV.style.opacity = '0.3'; secV.style.pointerEvents = 'none'; document.getElementById('select_mio').value = ""; actualizarOfertaMio(); } else if(modo === 'vehiculo') { secR.style.opacity = '0.3'; secR.style.pointerEvents = 'none'; secV.style.opacity = '1'; secV.style.pointerEvents = 'auto'; document.getElementById('off_d').value = 0; document.getElementById('off_a').value = 0; document.getElementById('off_p').value = 0; projBal(); } else { secR.style.opacity = '1'; secR.style.pointerEvents = 'auto'; secV.style.opacity = '1'; secV.style.pointerEvents = 'auto'; } }
-        function actualizarOfertaMio() { const id = document.getElementById('select_mio').value; if(id && miHangarPrecios[id]) { document.getElementById('mio_extra').classList.remove('hidden'); document.getElementById('ofre_qty').max = miHangarPrecios[id].stock; document.getElementById('ofre_qty').value = 1; multiValMio(); } else document.getElementById('mio_extra').classList.add('hidden'); }
-        function multiValMio() { const id = document.getElementById('select_mio').value; const q = parseInt(document.getElementById('ofre_qty').value) || 0; if(id && miHangarPrecios[id]) { const d = miHangarPrecios[id]; document.getElementById('mio_valor').innerHTML = `<span class='text-green-500'>$${(q * d.dinero).toLocaleString()}</span><span class='text-white'>${(q * d.acero).toLocaleString()}T</span><span class='text-yellow-500'>${(q * d.petroleo).toLocaleString()}L</span>`; } }
-        function mostrarError(txt) { document.getElementById('error_msg_text').innerText = txt; abrirModal('modalError'); }
-        function validarTradeo(e) { if(!rSel) { e.preventDefault(); mostrarError("<?php echo $txt['LIDER_INVENTARIO']['ERR_JS_SIN_FAC']; ?>"); return false; } if(parseInt(document.getElementById('off_d').value) > resActual.d || parseInt(document.getElementById('off_a').value) > resActual.a || parseInt(document.getElementById('off_p').value) > resActual.p) { e.preventDefault(); mostrarError("<?php echo $txt['LIDER_INVENTARIO']['ERR_JS_FONDOS']; ?>"); return false; } if(modoOferta === 'recursos' && parseInt(document.getElementById('off_d').value) === 0 && parseInt(document.getElementById('off_a').value) === 0 && parseInt(document.getElementById('off_p').value) === 0) { e.preventDefault(); mostrarError("<?php echo $txt['LIDER_INVENTARIO']['ERR_JS_VACIA']; ?>"); return false; } if(modoOferta === 'vehiculo' && document.getElementById('select_mio').value === "") { e.preventDefault(); mostrarError("<?php echo $txt['LIDER_INVENTARIO']['ERR_JS_VEHICULO']; ?>"); return false; } return true; }
+        
+        function actualizarOfertaMio() { 
+            const id = document.getElementById('select_mio').value; 
+            if(id && miHangarPrecios[id]) { 
+                document.getElementById('mio_extra').classList.remove('hidden'); 
+                document.getElementById('ofre_qty').max = miHangarPrecios[id].stock; 
+                document.getElementById('ofre_qty').value = 1; 
+                multiValMio(); 
+            } else {
+                document.getElementById('mio_extra').classList.add('hidden'); 
+            }
+        }
+        
+        function multiValMio() { 
+            const id = document.getElementById('select_mio').value; 
+            const q = parseInt(document.getElementById('ofre_qty').value) || 0; 
+            
+            if(q > miHangarPrecios[id].stock) {
+                document.getElementById('ofre_qty').value = miHangarPrecios[id].stock;
+            }
 
+            if(id && miHangarPrecios[id]) { 
+                const d = miHangarPrecios[id]; 
+                const unitario = `<span class='text-gray-500 block text-[8px] mb-1'><?php echo $txt['LIDER_INVENTARIO']['LBL_UNITARIO']; ?> $${parseInt(d.dinero).toLocaleString()} | ${parseInt(d.acero).toLocaleString()}T | ${parseInt(d.petroleo).toLocaleString()}L</span>`;
+                const total = `<div><span class='text-green-500'>$${(q * d.dinero).toLocaleString()}</span> <span class='text-white ml-2'>${(q * d.acero).toLocaleString()}T</span> <span class='text-yellow-500 ml-2'>${(q * d.petroleo).toLocaleString()}L</span></div>`;
+                
+                document.getElementById('mio_valor').innerHTML = `<div class='flex flex-col items-end'>${unitario}${total}</div>`; 
+            } 
+        }
+        
+        function mostrarError(txt) { document.getElementById('error_msg_text').innerText = txt; abrirModal('modalError'); }
+        function validarTradeo(e) { 
+            if(!rSel) { 
+                e.preventDefault(); mostrarError("<?php echo $txt['LIDER_INVENTARIO']['ERR_JS_SIN_FAC']; ?>"); return false; 
+            } 
+            
+            const offD = parseInt(document.getElementById('off_d').value) || 0;
+            const offA = parseInt(document.getElementById('off_a').value) || 0;
+            const offP = parseInt(document.getElementById('off_p').value) || 0;
+            const vehId = document.getElementById('select_mio').value;
+
+            if(offD > resActual.d || offA > resActual.a || offP > resActual.p) { 
+                e.preventDefault(); mostrarError("<?php echo $txt['LIDER_INVENTARIO']['ERR_JS_FONDOS']; ?>"); return false; 
+            } 
+            
+            if(offD === 0 && offA === 0 && offP === 0 && vehId === "") { 
+                e.preventDefault(); mostrarError("<?php echo $txt['LIDER_INVENTARIO']['ERR_JS_VACIA']; ?>"); return false; 
+            } 
+            
+            return true; 
+        }
         let tipoActual = 'tanque';
         setNacion(nacActual); setSeccion(tipoActual);
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const msg = urlParams.get('msg');
+            
+            if (msg) {
+                let mensajeTexto = "";
+                if (msg === 'oferta_enviada') {
+                    mensajeTexto = "<?php echo $txt['LIDER_INVENTARIO']['MSG_OFERTA_ENVIADA']; ?>";
+                } else if (msg === 'oferta_aceptada') {
+                    mensajeTexto = "<?php echo $txt['LIDER_INVENTARIO']['MSG_OFERTA_ACEPTADA']; ?>";
+                } else if (msg === 'oferta_rechazada') {
+                    mensajeTexto = "<?php echo $txt['LIDER_INVENTARIO']['MSG_OFERTA_RECHAZADA']; ?>";
+                } else if (msg === 'oferta_cancelada') {
+                    mensajeTexto = "<?php echo $txt['LIDER_INVENTARIO']['MSG_OFERTA_CANCELADA']; ?>";
+                }
+                
+                if (mensajeTexto !== "") {
+                    document.querySelector('#modalError h3').innerText = "<?php echo $txt['LIDER_INVENTARIO']['MODAL_INFORME_TIT']; ?>";
+                    document.querySelector('#modalError .text-red-500').innerText = "📝"; 
+                    mostrarError(mensajeTexto);
+                }
+                
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+        });
+
+        function abrirModalConfirmacion() {
+            abrirModal('modalConfirmarAceptacion');
+        }
+
+        function enviarFormularioAceptar() {
+            const btnSubmit = document.querySelector('#modalConfirmarAceptacion button[onclick="enviarFormularioAceptar()"]');
+            btnSubmit.innerText = '<?php echo $txt['LIDER_INVENTARIO']['BTN_PROCESANDO']; ?>';
+            btnSubmit.disabled = true;
+            document.getElementById('formAceptarTradeo').submit();
+        }
     </script>
 </body>
 </html>

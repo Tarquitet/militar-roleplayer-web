@@ -11,60 +11,69 @@ try {
     $stmt_eq->execute([':id' => $equipo_id]);
     $equipo = $stmt_eq->fetch(PDO::FETCH_ASSOC);
 
-    $stmt_p_count = $pdo->query("SELECT catalogo_id, COUNT(*) as total FROM planos_desbloqueados GROUP BY catalogo_id");
-    $conteo_patentes = $stmt_p_count->fetchAll(PDO::FETCH_KEY_PAIR);
+    // Obtener naciones para los filtros
+    $stmt_naciones = $pdo->query("SELECT nombre FROM naciones ORDER BY nombre ASC");
+    $lista_naciones = $stmt_naciones->fetchAll(PDO::FETCH_COLUMN);
 
-    $stmt_p_groups = $pdo->query("SELECT pd.catalogo_id, GROUP_CONCAT(c.nombre_equipo SEPARATOR ', ') as equipos FROM planos_desbloqueados pd JOIN cuentas c ON pd.cuenta_id = c.id GROUP BY pd.catalogo_id");
-    $grupos_patentes = $stmt_p_groups->fetchAll(PDO::FETCH_KEY_PAIR);
-
-    // Inventario ordenado por rango y BR
-    $stmt_inv = $pdo->prepare("SELECT i.id as inv_id, i.cantidad as stock_actual, c.* FROM inventario i JOIN catalogo_tienda c ON i.catalogo_id = c.id WHERE i.cuenta_id = :id ORDER BY c.rango ASC, CAST(c.br AS DECIMAL(10,1)) ASC");
+    // Obtener el inventario real del equipo
+    $stmt_inv = $pdo->prepare("SELECT id as inv_id, catalogo_id, cantidad as stock_actual FROM inventario WHERE cuenta_id = :id AND cantidad > 0");
     $stmt_inv->execute([':id' => $equipo_id]);
     $inventario = $stmt_inv->fetchAll(PDO::FETCH_ASSOC);
 
-    // Patentes ordenadas
-    $stmt_p = $pdo->prepare("SELECT p.id as plano_id, c.* FROM planos_desbloqueados p JOIN catalogo_tienda c ON p.catalogo_id = c.id WHERE p.cuenta_id = :id ORDER BY c.rango ASC, CAST(c.br AS DECIMAL(10,1)) ASC");
+    // Obtener patentes del equipo
+    $stmt_p = $pdo->prepare("SELECT id as plano_id, catalogo_id FROM planos_desbloqueados WHERE cuenta_id = :id");
     $stmt_p->execute([':id' => $equipo_id]);
     $planos_pagados = $stmt_p->fetchAll(PDO::FETCH_ASSOC);
-    
-    foreach ($planos_pagados as &$plano) {
-        $plano['stock_actual'] = 0;
-        foreach ($inventario as $inv) { if ($inv['id'] == $plano['id']) { $plano['stock_actual'] = $inv['stock_actual']; break; } }
+
+    // Obtener catálogo completo para cruzar datos
+    $stmt_cat = $pdo->query("SELECT * FROM catalogo_tienda ORDER BY nacion ASC, rango ASC, CAST(br AS DECIMAL(10,1)) ASC");
+    $catalogo_db = $stmt_cat->fetchAll(PDO::FETCH_ASSOC);
+
+    // Cruzar Catálogo Global con el Inventario del Equipo
+    $catalogo_equipo = [];
+    foreach($catalogo_db as $cn) {
+        $id_cat = $cn['id'];
+        
+        // Revisar si tiene el vehículo
+        $cn['stock_actual'] = 0;
+        $cn['inv_id'] = null;
+        foreach($inventario as $inv) {
+            if($inv['catalogo_id'] == $id_cat) {
+                $cn['stock_actual'] = $inv['stock_actual'];
+                $cn['inv_id'] = $inv['inv_id']; break;
+            }
+        }
+        
+        // Revisar si tiene la patente
+        $cn['tiene_patente'] = false;
+        $cn['plano_id'] = null;
+        foreach($planos_pagados as $p) {
+            if($p['catalogo_id'] == $id_cat) {
+                $cn['tiene_patente'] = true;
+                $cn['plano_id'] = $p['plano_id']; break;
+            }
+        }
+
+        $nacion = $cn['nacion'];
+        $tier = $cn['rango'] ?? 1;
+        $tipo = $cn['tipo'] ?? 'tanque';
+        $clase = !empty($cn['subtipo']) ? $cn['subtipo'] : (!empty($cn['clase']) ? $cn['clase'] : 'No Clasificado'); 
+        $catalogo_equipo[$nacion][$tier][$tipo][$clase][] = $cn;
     }
-    unset($plano);
 
     $stmt_f = $pdo->prepare("SELECT * FROM flotas WHERE cuenta_id = :id ORDER BY slot ASC");
     $stmt_f->execute([':id' => $equipo_id]);
     $flotas_listado = $stmt_f->fetchAll(PDO::FETCH_ASSOC);
 
-    // JERARQUÍA DE ORDENAMIENTO (ORDEN EXACTO SOLICITADO)
     $orden_tanques = ['Ligero', 'Mediano', 'Pesado', 'Caza Tanques', 'AAA'];
     $orden_aviones = ['Caza', 'Interceptor', 'Avion de Ataque', 'Bombardero'];
-
-    // AGRUPACIÓN PARA HANGAR
-    $hangar_agrupado = [];
-    foreach($inventario as $cn) { 
-        $tier = $cn['rango'] ?? 1;
-        $tipo = $cn['tipo'] ?? 'tanque';
-        $clase = !empty($cn['subtipo']) ? $cn['subtipo'] : (!empty($cn['clase']) ? $cn['clase'] : 'No Clasificado'); 
-        $hangar_agrupado[$tier][$tipo][$clase][] = $cn; 
-    }
-    
-    // AGRUPACIÓN PARA PATENTES
-    $patentes_agrupadas = [];
-    foreach($planos_pagados as $cn) { 
-        $tier = $cn['rango'] ?? 1;
-        $tipo = $cn['tipo'] ?? 'tanque';
-        $clase = !empty($cn['subtipo']) ? $cn['subtipo'] : (!empty($cn['clase']) ? $cn['clase'] : 'No Clasificado'); 
-        $patentes_agrupadas[$tier][$tipo][$clase][] = $cn; 
-    }
 
 } catch (PDOException $e) { die("Fallo: " . $e->getMessage()); }
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <title><?php echo $txt['STAFF_VER_INVENTARIO']['TITULO_PAGINA']; ?></title>
+    <title><?php echo $txt['STAFF_VER_INVENTARIO']['TITULO_PAGINA_GESTION']; ?></title>
     <?php include '../includes/head.php'; ?>
     <style>
         .modal-active { overflow: hidden; }
@@ -74,42 +83,31 @@ try {
         .fleet-row { background: rgba(255,255,255,0.02); border: 1px solid #222; transition: 0.3s; }
         .unit-pill { font-size: 10px; color: #fff; font-weight: 700; text-transform: uppercase; background: #000; padding: 4px 10px; border: 1px solid #1a1a1a; }
         .btn-close-modal { position: absolute; top: 15px; right: 15px; width: 32px; height: 32px; background: #222; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 1px solid #333; font-size: 18px; z-index: 200; }
-        .ownership-tag { background: rgba(59, 130, 246, 0.2); color: #60a5fa; font-size: 8px; font-weight: 900; padding: 2px 6px; border: 1px solid rgba(59, 130, 246, 0.3); position: absolute; top: 0; left: 0; z-index: 20; }
         .input-error { color: #ff0000 !important; border-color: #ff0000 !important; }
         
-        /* ESTILO ACORDEÓN JACKY (NEGRO Y ROJO) */
         .tier-container { border: 1px solid #991b1b; background: #050505; margin-bottom: 1.5rem; }
-        .tier-header { 
-            background: url('https://www.transparenttextures.com/patterns/diagmonds-light.png'), #000; 
-            border-bottom: 2px solid #ef4444; 
-            cursor: pointer; 
-            padding: 12px 24px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
+        .tier-header { background: url('https://www.transparenttextures.com/patterns/diagmonds-light.png'), #000; border-bottom: 2px solid #ef4444; cursor: pointer; padding: 12px 24px; display: flex; justify-content: space-between; align-items: center; }
         .tier-header h2 { color: #ef4444; font-weight: 900; text-transform: uppercase; letter-spacing: 3px; font-size: 1.2rem; margin: 0; text-shadow: 2px 2px 0 #000; }
-
-        /* SCROLL HORIZONTAL Y TARJETAS */
+        
         .custom-scrollbar::-webkit-scrollbar { height: 6px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #991b1b; border-radius: 10px; }
-        
         .tag-premium { position: absolute; top: 0; right: 0; background: #c5a059; color: #000; font-size: 9px; font-weight: 900; padding: 3px 8px; z-index: 10; text-transform: uppercase; }
         .tag-br { position: absolute; top: 0; left: 0; background: #000; border-right: 1px solid #333; border-bottom: 1px solid #333; color: #fff; font-size: 10px; font-weight: 900; padding: 3px 8px; z-index: 10; font-family: monospace; }
         .card-premium { border-color: #c5a059 !important; box-shadow: inset 0 0 15px rgba(197, 160, 89, 0.15); }
-        
         .stat-grid-label { font-size: 7px; color: #555; font-weight: 900; text-transform: uppercase; }
         .stat-grid-value { font-size: 9px; font-weight: 900; font-family: 'Space Mono', monospace; }
+        
+        .not-owned .veh-img { filter: grayscale(1) opacity(0.3); }
     </style>
 </head>
-<body class="bg-[#0a0b08] text-[var(--text-main)] min-h-screen pb-20">
+<body class="bg-[#0a0b08] text-[var(--text-main)] min-h-screen pb-20" onload="initFiltros()">
     <?php include '../includes/nav_staff.php'; ?>
 
     <main class="p-8 max-w-[1600px] mx-auto">
         <div class="mb-12 flex justify-between items-center border-b border-white/5 pb-8">
             <a href="staff_dashboard.php" class="btn-m !bg-none !border-white/10 !text-gray-500 hover:!text-[var(--aoe-gold)] !py-2 !px-6 text-[10px] uppercase font-black transition"><?php echo $txt['STAFF_VER_INVENTARIO']['BTN_VOLVER']; ?></a>
             <div class="text-right">
-                <span class="stat-label"><?php echo $txt['STAFF_VER_INVENTARIO']['LBL_FONDOS']; ?></span>
+                <span class="stat-label"><?php echo $txt['STAFF_VER_INVENTARIO']['LBL_FONDOS_EQUIPO']; ?></span>
                 <div class="flex gap-6 mt-1 font-black text-lg">
                     <span class="text-green-500">$<?php echo number_format($equipo['dinero']); ?></span>
                     <span class="text-white"><?php echo number_format($equipo['acero']); ?>T</span>
@@ -118,141 +116,86 @@ try {
             </div>
         </div>
 
-        <h1 class="text-3xl font-black mb-12 uppercase italic text-white"><?php echo $txt['STAFF_VER_INVENTARIO']['TITULO_INSPECCION']; ?> <span class="text-[var(--aoe-gold)]"><?php echo htmlspecialchars($equipo['nombre_equipo']); ?></span></h1>
+        <h1 class="text-3xl font-black mb-8 uppercase italic text-white"><?php echo $txt['STAFF_VER_INVENTARIO']['TITULO_GESTION']; ?> <span class="text-[var(--aoe-gold)]"><?php echo htmlspecialchars($equipo['nombre_equipo']); ?></span></h1>
 
-        <div class="mb-20">
-            <h2 class="text-[11px] font-black uppercase tracking-[0.4em] mb-8 text-[#c5a059] border-l-4 border-yellow-900 pl-4"><?php echo $txt['STAFF_VER_INVENTARIO']['TITULO_FLOTAS']; ?></h2>
-            <div class="space-y-4">
-                <?php if(empty($flotas_listado)): ?>
-                    <div class="p-10 border border-dashed border-white/5 text-center text-gray-600 text-[10px] font-black uppercase"><?php echo $txt['STAFF_VER_INVENTARIO']['SIN_FLOTAS']; ?></div>
-                <?php else: foreach($flotas_listado as $fl): ?>
-                    <div class="fleet-row p-6 flex flex-col md:flex-row justify-between items-center gap-6">
-                        <div class="flex items-center gap-8">
-                            <div class="text-center"><span class="stat-label"><?php echo $txt['STAFF_VER_INVENTARIO']['LBL_SLOT']; ?></span><div class="text-[#c5a059] font-black text-xl">#<?php echo $fl['slot']; ?></div></div>
-                            <div><span class="stat-label"><?php echo $txt['STAFF_VER_INVENTARIO']['LBL_INSIGNIA']; ?></span><div class="text-white font-bold uppercase text-sm"><?php echo htmlspecialchars($fl['insignia']); ?></div></div>
-                        </div>
-                        <div class="flex flex-wrap gap-2">
-                            <?php for($i=1;$i<=4;$i++){ if(!empty($fl['escolta_'.$i])){ echo '<div class="unit-pill">ESC '.$i.': '.htmlspecialchars($fl['escolta_'.$i]).'</div>'; } } ?>
-                        </div>
-                        <button onclick="confirmarBorradoFlota(<?php echo $fl['id']; ?>, <?php echo $fl['slot']; ?>)" class="bg-red-950/20 text-red-500 border border-red-900 px-6 py-2 text-[9px] font-black uppercase hover:bg-red-600 transition"><?php echo $txt['STAFF_VER_INVENTARIO']['BTN_DESTRUIR']; ?></button>
-                    </div>
-                <?php endforeach; endif; ?>
+        <div class="m-panel mb-8 p-4 bg-black/40 shadow-2xl border-white/5">
+            <div class="flex gap-4 mb-4 border-b border-white/5 pb-4">
+                <button id="btn_tipo_tanque" onclick="setFiltroTipo('tanque')" class="btn-m !text-[10px]"><?php echo $txt['STAFF_VER_INVENTARIO']['CAT_TANQUES']; ?></button>
+                <button id="btn_tipo_avion" onclick="setFiltroTipo('avion')" class="btn-m !text-[10px] grayscale opacity-70"><?php echo $txt['STAFF_VER_INVENTARIO']['CAT_AVIONES']; ?></button>
+            </div>
+            <div class="flex items-center gap-4">
+                <span class="text-[var(--aoe-gold)] text-[10px] font-black uppercase tracking-widest"><?php echo $txt['STAFF_VER_INVENTARIO']['LBL_NACION']; ?></span>
+                <div id="contenedor_naciones" class="flex flex-wrap gap-2"></div>
             </div>
         </div>
 
-        <div class="mb-20">
-            <h2 class="text-[11px] font-black uppercase tracking-[0.4em] mb-8 text-[var(--aoe-gold)] border-l-4 border-yellow-900 pl-4"><?php echo $txt['STAFF_VER_INVENTARIO']['TITULO_HANGAR']; ?></h2>
-            <div class="space-y-4">
-                <?php ksort($hangar_agrupado); foreach($hangar_agrupado as $tier => $tipos): ?>
-                    <div class="tier-container shadow-2xl">
-                        <div class="tier-header" onclick="toggleTier(this)">
-                            <h2><?php echo $txt['STAFF_VER_INVENTARIO']['LBL_TIER']; ?> <?php echo $tier; ?></h2>
-                            <span class="text-red-500 font-bold">▼</span>
-                        </div>
-                        <div class="tier-content p-6 space-y-8 block">
-                            <?php foreach(['tanque', 'avion'] as $tipo_v): if(!isset($tipos[$tipo_v])) continue; ?>
-                                <div>
-                                    <?php 
-                                    $orden = ($tipo_v == 'tanque') ? $orden_tanques : $orden_aviones;
-                                    foreach($orden as $clase_n): if(!isset($tipos[$tipo_v][$clase_n])) continue; 
-                                    ?>
-                                        <div class="mb-6">
-                                            <h3 class="text-gray-600 font-black uppercase text-[9px] tracking-widest border-b border-white/5 pb-1 mb-4"><?php echo $clase_n; ?></h3>
-                                            <div class="flex gap-4 overflow-x-auto pb-4 custom-scrollbar">
-                                                <?php foreach($tipos[$tipo_v][$clase_n] as $i): 
-                                                    $i_json = htmlspecialchars(json_encode($i), ENT_QUOTES, 'UTF-8'); 
-                                                    $es_prem = isset($i['is_premium']) && $i['is_premium'] == 1;
-                                                ?>
-                                                    <div class="flex-shrink-0 w-64 flex flex-col bg-[#111] border <?php echo $es_prem ? 'card-premium' : 'border-gray-800'; ?> relative hover:brightness-110 transition">
-                                                        <?php if($es_prem): ?><div class="tag-premium">PREMIUM</div><?php endif; ?>
-                                                        <div class="tag-br">BR: <?php echo htmlspecialchars($i['br'] ?? '1.0'); ?></div>
-                                                        <div class="h-28 bg-black overflow-hidden"><img src="../<?php echo $i['imagen_url']; ?>" class="w-full h-full object-cover opacity-80"></div>
-                                                        <div class="p-3 flex-grow flex flex-col">
-                                                            <span class="text-[11px] text-white font-black uppercase block mb-2 truncate text-center"><?php echo htmlspecialchars($i['nombre_vehiculo']); ?></span>
-                                                            
-                                                            <div class="flex justify-center gap-1 mb-3">
-                                                                <span class="text-[7px] bg-blue-900/30 text-blue-400 px-1.5 py-0.5 rounded font-black uppercase"><?php echo htmlspecialchars($i['tipo']); ?></span>
-                                                                <span class="text-[7px] bg-gray-800 text-gray-400 px-1.5 py-0.5 rounded font-black uppercase"><?php echo $clase_n; ?></span>
-                                                            </div>
-
-                                                            <div class="grid grid-cols-3 gap-0 bg-black border border-gray-800 p-1.5 text-center rounded mb-3">
-                                                                <div class="border-r border-gray-800"><span class="stat-grid-label block">CASH</span><span class="stat-grid-value text-green-500">$<?php echo number_format($i['costo_dinero']); ?></span></div>
-                                                                <div class="border-r border-gray-800"><span class="stat-grid-label block">STEEL</span><span class="stat-grid-value text-white"><?php echo number_format($i['costo_acero']); ?>T</span></div>
-                                                                <div><span class="stat-grid-label block">FUEL</span><span class="stat-grid-value text-yellow-500"><?php echo number_format($i['costo_petroleo']); ?>L</span></div>
-                                                            </div>
-
-                                                            <div class="mt-auto flex justify-between items-center pt-2 border-t border-gray-800/50">
-                                                                <span class="stat-label"><?php echo $txt['STAFF_VER_INVENTARIO']['LBL_STOCK']; ?></span>
-                                                                <span class="text-xl font-black text-[#c5a059] font-['Cinzel']"><?php echo $i['stock_actual']; ?>x</span>
-                                                            </div>
-                                                        </div>
-                                                        <button onclick='abrirModalVehiculo(<?php echo $i_json; ?>)' class="w-full bg-red-800 text-white border-t border-red-600 py-3 text-[10px] font-black uppercase tracking-widest hover:bg-red-500 transition"><?php echo $txt['STAFF_VER_INVENTARIO']['BTN_PURGAR_UNIDADES']; ?></button>
-                                                    </div>
-                                                <?php endforeach; ?>
-                                            </div>
-                                        </div>
-                                    <?php endforeach; ?>
-                                </div>
-                            <?php endforeach; ?>
-                        </div>
-                    </div>
-                <?php endforeach; ?>
-            </div>
+        <div id="mensaje_vacio" class="m-panel mb-8 p-10 bg-[#0a0a0a] border border-gray-800 text-center hidden">
+            <span class="text-gray-600 font-black uppercase tracking-widest text-[11px]"><?php echo $txt['STAFF_VER_INVENTARIO']['SIN_ACTIVOS_CAT']; ?></span>
         </div>
 
         <div class="mb-20">
-            <h2 class="text-[11px] font-black uppercase tracking-[0.4em] mb-8 text-blue-400 border-l-4 border-blue-900 pl-4"><?php echo $txt['STAFF_VER_INVENTARIO']['TITULO_PATENTES']; ?></h2>
-            <div class="space-y-4">
-                <?php ksort($patentes_agrupadas); foreach($patentes_agrupadas as $tier => $tipos): ?>
-                    <div class="tier-container shadow-2xl">
-                        <div class="tier-header" onclick="toggleTier(this)">
-                            <h2><?php echo $txt['STAFF_VER_INVENTARIO']['LBL_TIER']; ?> <?php echo $tier; ?></h2>
-                            <span class="text-red-500 font-bold">▼</span>
-                        </div>
-                        <div class="tier-content p-6 space-y-8 block">
-                            <?php foreach(['tanque', 'avion'] as $tipo_v): if(!isset($tipos[$tipo_v])) continue; ?>
-                                <div>
-                                    <?php 
-                                    $orden = ($tipo_v == 'tanque') ? $orden_tanques : $orden_aviones;
-                                    foreach($orden as $clase_n): if(!isset($tipos[$tipo_v][$clase_n])) continue; 
+            <div id="cont_hangar" class="space-y-6">
+                <?php foreach($catalogo_equipo as $nacion => $tiers): ?>
+                    <div class="bloque-nacion" data-nacion="<?php echo htmlspecialchars($nacion); ?>">
+                        <?php foreach($tiers as $tier => $tipos): ?>
+                            <div class="tier-container shadow-2xl">
+                                <div class="tier-header" onclick="toggleTier(this)">
+                                    <h2><?php echo $txt['STAFF_VER_INVENTARIO']['LBL_TIER']; ?> <?php echo $tier; ?></h2>
+                                    <span class="text-red-500 font-bold">▼</span>
+                                </div>
+                                <div class="tier-content p-6 space-y-8 block">
+                                    <?php foreach(['tanque' => $orden_tanques, 'avion' => $orden_aviones] as $tipo_vehiculo => $orden_clases): 
+                                        if(!isset($tipos[$tipo_vehiculo])) continue;
                                     ?>
-                                        <div class="mb-6">
-                                            <h3 class="text-gray-500 font-black uppercase text-[10px] tracking-[0.2em] border-b border-gray-800 pb-2 mb-4"><?php echo $clase_n; ?></h3>
-                                            <div class="flex gap-4 overflow-x-auto pb-4 custom-scrollbar">
-                                                <?php foreach($tipos[$tipo_v][$clase_n] as $p): 
-                                                    $p_json = htmlspecialchars(json_encode($p), ENT_QUOTES, 'UTF-8');
-                                                    $poseedores = $grupos_patentes[$p['id']] ?? 'Solo esta facción';
-                                                    $poseedores_json = htmlspecialchars(json_encode($poseedores), ENT_QUOTES, 'UTF-8');
-                                                    $es_prem = isset($p['is_premium']) && $p['is_premium'] == 1;
-                                                ?>
-                                                    <div class="flex-shrink-0 w-64 flex flex-col bg-[#111] border <?php echo $es_prem ? 'card-premium' : 'border-white/5'; ?> relative hover:brightness-110 transition">
-                                                        <?php if($es_prem): ?><div class="tag-premium">PREMIUM</div><?php endif; ?>
-                                                        <div class="ownership-tag" title="<?php echo htmlspecialchars($poseedores); ?>"><?php echo $txt['STAFF_VER_INVENTARIO']['LBL_DUENOS']; ?> <?php echo ($conteo_patentes[$p['id']] ?? 1); ?></div>
-                                                        <div class="tag-br">BR: <?php echo htmlspecialchars($p['br'] ?? '1.0'); ?></div>
-                                                        <div class="h-28 bg-[#050505]"><img src="../<?php echo $p['imagen_url']; ?>" class="w-full h-full object-cover grayscale opacity-40"></div>
-                                                        <div class="p-3 flex-grow flex flex-col">
-                                                            <span class="text-[11px] text-white font-black uppercase block mb-2 truncate text-center"><?php echo htmlspecialchars($p['nombre_vehiculo']); ?></span>
-                                                            
-                                                            <div class="flex justify-center gap-1 mb-3">
-                                                                <span class="text-[7px] bg-blue-900/30 text-blue-400 px-1.5 py-0.5 rounded font-black uppercase"><?php echo htmlspecialchars($p['tipo']); ?></span>
-                                                                <span class="text-[7px] bg-gray-800 text-gray-400 px-1.5 py-0.5 rounded font-black uppercase"><?php echo $clase_n; ?></span>
-                                                            </div>
+                                        <div class="seccion-tipo" data-tipo="<?php echo $tipo_vehiculo; ?>">
+                                            <?php foreach($orden_clases as $clase_nombre): 
+                                                if(!isset($tipos[$tipo_vehiculo][$clase_nombre])) continue;
+                                            ?>
+                                                <div class="clase-container mb-8">
+                                                    <h3 class="text-gray-600 font-black uppercase text-[10px] tracking-widest border-b border-white/5 pb-1 mb-4"><?php echo $clase_nombre; ?></h3>
+                                                    <div class="flex gap-4 overflow-x-auto pb-4 custom-scrollbar">
+                                                        <?php foreach($tipos[$tipo_vehiculo][$clase_nombre] as $i): 
+                                                            $i_json = htmlspecialchars(json_encode($i), ENT_QUOTES, 'UTF-8'); 
+                                                            $es_prem = isset($i['is_premium']) && $i['is_premium'] == 1;
+                                                            $tiene_algo = ($i['stock_actual'] > 0 || $i['tiene_patente']);
+                                                        ?>
+                                                            <div class="flex-shrink-0 w-64 flex flex-col bg-[#111] border <?php echo $es_prem ? 'card-premium' : 'border-gray-800'; ?> relative hover:brightness-110 transition <?php echo !$tiene_algo ? 'not-owned' : ''; ?>">
+                                                                <?php if($es_prem): ?><div class="tag-premium"><?php echo $txt['STAFF_VER_INVENTARIO']['TAG_PREMIUM']; ?></div><?php endif; ?>
+                                                                <div class="tag-br"><?php echo $txt['STAFF_VER_INVENTARIO']['TAG_BR']; ?> <?php echo htmlspecialchars($i['br'] ?? '1.0'); ?></div>
+                                                                <div class="h-28 bg-black overflow-hidden"><img src="../<?php echo $i['imagen_url']; ?>" class="w-full h-full object-cover veh-img"></div>
+                                                                <div class="p-3 flex-grow flex flex-col">
+                                                                    <span class="text-[11px] text-white font-black uppercase block mb-2 truncate text-center"><?php echo htmlspecialchars($i['nombre_vehiculo']); ?></span>
+                                                                    
+                                                                    <div class="grid grid-cols-3 gap-0 bg-black border border-gray-800 p-1 text-center rounded mt-auto mb-3">
+                                                                        <div class="border-r border-gray-800"><span class="stat-grid-label block"><?php echo $txt['STAFF_VER_INVENTARIO']['LBL_CASH']; ?></span><span class="stat-grid-value text-green-500">$<?php echo number_format($i['costo_dinero']); ?></span></div>
+                                                                        <div class="border-r border-gray-800"><span class="stat-grid-label block"><?php echo $txt['STAFF_VER_INVENTARIO']['LBL_STEEL']; ?></span><span class="stat-grid-value text-white"><?php echo number_format($i['costo_acero']); ?>T</span></div>
+                                                                        <div><span class="stat-grid-label block"><?php echo $txt['STAFF_VER_INVENTARIO']['LBL_FUEL']; ?></span><span class="stat-grid-value text-yellow-500"><?php echo number_format($i['costo_petroleo']); ?>L</span></div>
+                                                                    </div>
+                                                                </div>
 
-                                                            <div class="grid grid-cols-3 gap-0 bg-black border border-gray-800 p-1.5 text-center rounded mt-auto mb-2">
-                                                                <div class="border-r border-gray-800"><span class="stat-grid-label block">CASH</span><span class="stat-grid-value text-green-500">$<?php echo number_format($p['costo_dinero']); ?></span></div>
-                                                                <div class="border-r border-gray-800"><span class="stat-grid-label block">STEEL</span><span class="stat-grid-value text-white"><?php echo number_format($p['costo_acero']); ?>T</span></div>
-                                                                <div><span class="stat-grid-label block">FUEL</span><span class="stat-grid-value text-yellow-500"><?php echo number_format($p['costo_petroleo']); ?>L</span></div>
+                                                                <div class="flex flex-col border-t border-gray-800">
+                                                                    <?php if($i['tiene_patente']): ?>
+                                                                        <button onclick='abrirModalPatente(<?php echo $i_json; ?>)' class="bg-red-950/20 text-red-500 py-2 text-[9px] font-black uppercase hover:bg-red-900 hover:text-white transition"><?php echo $txt['STAFF_VER_INVENTARIO']['BTN_ELIMINAR_PATENTE']; ?></button>
+                                                                    <?php else: ?>
+                                                                        <button onclick='abrirModalOtorgar(<?php echo $i_json; ?>, "patente")' class="bg-blue-900/20 text-blue-400 py-2 text-[9px] font-black uppercase hover:bg-blue-600 hover:text-white transition"><?php echo $txt['STAFF_VER_INVENTARIO']['BTN_OTORGAR_PATENTE']; ?></button>
+                                                                    <?php endif; ?>
+
+                                                                    <?php if($i['stock_actual'] > 0): ?>
+                                                                        <button onclick='abrirModalVehiculo(<?php echo $i_json; ?>)' class="bg-yellow-900/20 text-yellow-500 border-t border-gray-800 py-2 text-[9px] font-black uppercase hover:bg-yellow-600 hover:text-black transition"><?php echo $txt['STAFF_VER_INVENTARIO']['BTN_UNIDADES_FISICAS']; ?> <?php echo $i['stock_actual']; ?>x</button>
+                                                                    <?php else: ?>
+                                                                        <button onclick='abrirModalOtorgar(<?php echo $i_json; ?>, "vehiculo")' class="bg-green-900/20 text-green-500 border-t border-gray-800 py-2 text-[9px] font-black uppercase hover:bg-green-700 hover:text-white transition"><?php echo $txt['STAFF_VER_INVENTARIO']['BTN_DAR_VEHICULO']; ?></button>
+                                                                    <?php endif; ?>
+                                                                </div>
                                                             </div>
-                                                        </div>
-                                                        <button onclick='abrirModalPatente(<?php echo $p_json; ?>, <?php echo $poseedores_json; ?>)' class="w-full bg-red-950/20 text-red-500 border-t border-red-900 text-[9px] py-3 font-black uppercase hover:bg-red-700 hover:text-white transition"><?php echo $txt['STAFF_VER_INVENTARIO']['BTN_PURGAR_TECNOLOGIA']; ?></button>
+                                                        <?php endforeach; ?>
                                                     </div>
-                                                <?php endforeach; ?>
-                                            </div>
+                                                </div>
+                                            <?php endforeach; ?>
                                         </div>
                                     <?php endforeach; ?>
                                 </div>
-                            <?php endforeach; ?>
-                        </div>
+                            </div>
+                        <?php endforeach; ?>
                     </div>
                 <?php endforeach; ?>
             </div>
@@ -262,19 +205,22 @@ try {
     <div id="modalPatente" class="hidden fixed inset-0 bg-black/98 z-[200] flex items-center justify-center p-4 backdrop-blur-md">
         <div class="m-panel w-full max-w-md glass-panel p-10 border-red-500/30 relative">
             <button onclick="cerrarModal('modalPatente')" class="btn-close-modal">&times;</button>
-            <h2 class="text-red-500 font-black text-center text-[10px] uppercase mb-8 tracking-[0.3em]"><?php echo $txt['STAFF_VER_INVENTARIO']['MODAL_PURGA_PATENTE']; ?></h2>
+            <h2 class="text-red-500 font-black text-center text-[10px] uppercase mb-8 tracking-[0.3em]"><?php echo $txt['STAFF_VER_INVENTARIO']['MODAL_PURGA_PATENTE_TIT']; ?></h2>
             <div class="text-center mb-6"><span id="p_nombre" class="text-white font-black text-3xl uppercase font-['Cinzel']"></span></div>
-            <div class="bg-blue-900/10 border border-blue-900/30 p-3 text-center mb-8"><span class="stat-label block mb-1 text-blue-500"><?php echo $txt['STAFF_VER_INVENTARIO']['LBL_DIST_GLOBAL']; ?></span><span id="p_owners_txt" class="text-white font-bold text-[10px] uppercase leading-relaxed"></span></div>
             <form action="../logic/procesar_reembolso_staff.php" method="POST">
-                <input type="hidden" name="tipo" value="plano"><input type="hidden" name="target_id" id="p_target_id"><input type="hidden" name="equipo_id" value="<?php echo $equipo_id; ?>">
+                <input type="hidden" name="tipo" value="plano">
+                <input type="hidden" name="target_id" id="p_target_id">
+                <input type="hidden" name="equipo_id" value="<?php echo $equipo_id; ?>">
+                
                 <div class="bg-black/40 p-4 border border-white/10 mb-2"><label class="flex items-center gap-4 cursor-pointer"><input type="checkbox" name="reembolsar" value="1" id="p_check_reembolso" checked onchange="togglePRef()" class="w-5 h-5 accent-green-500"><span class="text-[10px] font-black text-gray-300 uppercase"><?php echo $txt['STAFF_VER_INVENTARIO']['LBL_DEV_DINERO']; ?></span></label></div>
-                <div id="p_vehiculos_container" class="bg-red-950/20 p-4 border border-red-900/30 mb-8 hidden"><label class="flex items-center gap-4 cursor-pointer"><input type="checkbox" name="purgar_vehiculos" value="1" id="p_check_vehiculos" onchange="togglePRef()" class="w-5 h-5 accent-red-500"><span class="text-[10px] font-black text-red-400 uppercase"><?php echo $txt['STAFF_VER_INVENTARIO']['LBL_PURGAR_VEH']; ?> (<span id="p_stock_txt" class="text-white"></span>x)?</span></label></div>
+                <div id="p_vehiculos_container" class="bg-red-950/20 p-4 border border-red-900/30 mb-8 hidden"><label class="flex items-center gap-4 cursor-pointer"><input type="checkbox" name="purgar_vehiculos" value="1" id="p_check_vehiculos" onchange="togglePRef()" class="w-5 h-5 accent-red-500"><span class="text-[10px] font-black text-red-400 uppercase"><?php echo $txt['STAFF_VER_INVENTARIO']['LBL_PURGAR_VEH_1']; ?><span id="p_stock_txt" class="text-white"></span><?php echo $txt['STAFF_VER_INVENTARIO']['LBL_PURGAR_VEH_2']; ?></span></label></div>
+                
                 <div id="p_preview" class="space-y-2 mb-10 text-[10px] font-mono font-black transition-opacity">
-                    <div class="flex justify-between p-2 bg-white/5 border border-white/5"><span>CASH</span><div class="flex gap-2"><span id="p_d_old" class="text-gray-500"></span><span id="p_d_add" class="text-green-500"></span><span class="text-white">→</span><span id="p_d_new" class="text-green-500"></span></div></div>
-                    <div class="flex justify-between p-2 bg-white/5 border border-white/5"><span>STEEL</span><div class="flex gap-2"><span id="p_a_old" class="text-gray-500"></span><span id="p_a_add" class="text-white"></span><span class="text-white">→</span><span id="p_a_new" class="text-white"></span></div></div>
-                    <div class="flex justify-between p-2 bg-white/5 border border-white/5"><span>FUEL</span><div class="flex gap-2"><span id="p_p_old" class="text-gray-500"></span><span id="p_p_add" class="text-yellow-500"></span><span class="text-white">→</span><span id="p_p_new" class="text-yellow-500"></span></div></div>
+                    <div class="flex justify-between p-2 bg-white/5 border border-white/5"><span><?php echo $txt['STAFF_VER_INVENTARIO']['LBL_CASH']; ?></span><div class="flex gap-2"><span id="p_d_old" class="text-gray-500"></span><span id="p_d_add" class="text-green-500"></span><span class="text-white">→</span><span id="p_d_new" class="text-green-500"></span></div></div>
+                    <div class="flex justify-between p-2 bg-white/5 border border-white/5"><span><?php echo $txt['STAFF_VER_INVENTARIO']['LBL_STEEL']; ?></span><div class="flex gap-2"><span id="p_a_old" class="text-gray-500"></span><span id="p_a_add" class="text-white"></span><span class="text-white">→</span><span id="p_a_new" class="text-white"></span></div></div>
+                    <div class="flex justify-between p-2 bg-white/5 border border-white/5"><span><?php echo $txt['STAFF_VER_INVENTARIO']['LBL_FUEL']; ?></span><div class="flex gap-2"><span id="p_p_old" class="text-gray-500"></span><span id="p_p_add" class="text-yellow-500"></span><span class="text-white">→</span><span id="p_p_new" class="text-yellow-500"></span></div></div>
                 </div>
-                <div class="grid grid-cols-2 gap-4"><button type="submit" class="bg-red-600 text-black py-5 font-black uppercase text-[11px] hover:bg-red-500 transition"><?php echo $txt['BOTONES']['CONFIRMAR']; ?></button><button type="button" onclick="cerrarModal('modalPatente')" class="border border-white/10 text-gray-500 py-5 font-black uppercase"><?php echo $txt['STAFF_VER_INVENTARIO']['BTN_ABORTAR']; ?></button></div>
+                <div class="grid grid-cols-2 gap-4"><button type="submit" class="bg-red-600 text-black py-5 font-black uppercase text-[11px] hover:bg-red-500 transition"><?php echo $txt['STAFF_VER_INVENTARIO']['BTN_CONFIRMAR']; ?></button><button type="button" onclick="cerrarModal('modalPatente')" class="border border-white/10 text-gray-500 py-5 font-black uppercase"><?php echo $txt['STAFF_VER_INVENTARIO']['BTN_ABORTAR']; ?></button></div>
             </form>
         </div>
     </div>
@@ -282,31 +228,162 @@ try {
     <div id="modalVehiculo" class="hidden fixed inset-0 bg-black/98 z-[200] flex items-center justify-center p-4 backdrop-blur-md">
         <div class="m-panel w-full max-w-lg glass-panel p-10 border-red-500/30 relative">
             <button onclick="cerrarModal('modalVehiculo')" class="btn-close-modal">&times;</button>
-            <h2 class="text-red-500 font-black text-center text-[10px] uppercase mb-10 tracking-[0.3em]"><?php echo $txt['STAFF_VER_INVENTARIO']['MODAL_REINTEGRO']; ?></h2>
-            <div class="bg-black/40 p-4 border border-white/5 mb-8 text-center"><span id="v_nombre" class="text-white font-black text-2xl uppercase font-['Cinzel'] block"></span><span class="text-[9px] text-gray-500 uppercase tracking-widest"><?php echo $txt['STAFF_VER_INVENTARIO']['LBL_STOCK_DISP']; ?> <span id="v_max_txt" class="text-white font-bold"></span></span></div>
-            <form action="../logic/procesar_reembolso_staff.php" method="POST">
-                <input type="hidden" name="tipo" value="vehiculo"><input type="hidden" name="target_id" id="v_target_id"><input type="hidden" name="equipo_id" value="<?php echo $equipo_id; ?>"><input type="hidden" name="cantidad_final" id="v_qty_form">
+            <h2 class="text-red-500 font-black text-center text-[10px] uppercase mb-6 tracking-[0.3em]"><?php echo $txt['STAFF_VER_INVENTARIO']['MODAL_GESTION_VEHICULO']; ?></h2>
+            <div class="bg-black/40 p-4 border border-white/5 mb-6 text-center">
+                <span id="v_nombre" class="text-white font-black text-2xl uppercase font-['Cinzel'] block"></span>
+                <span class="text-[9px] text-gray-500 uppercase tracking-widest"><?php echo $txt['STAFF_VER_INVENTARIO']['LBL_STOCK_FISICO']; ?> <span id="v_max_txt" class="text-white font-bold"></span></span>
+            </div>
+            
+            <div class="mb-8 border border-blue-900/30 bg-blue-950/10 p-4 text-center">
+                <span class="block text-[9px] text-blue-400 font-black uppercase tracking-widest mb-3"><?php echo $txt['STAFF_VER_INVENTARIO']['LBL_AJUSTE_RAPIDO']; ?></span>
+                <div class="flex gap-4">
+                    <form action="../logic/modificar_stock_rapido.php" method="POST" class="w-1/2">
+                        <input type="hidden" name="inv_id" id="v_inv_id_restar">
+                        <input type="hidden" name="equipo_id" value="<?php echo $equipo_id; ?>">
+                        <input type="hidden" name="accion" value="restar">
+                        <button type="submit" class="w-full bg-black hover:bg-red-900 text-gray-400 hover:text-white py-3 font-black text-[11px] border border-gray-800 transition"><?php echo $txt['STAFF_VER_INVENTARIO']['BTN_RESTAR_UNIDAD']; ?></button>
+                    </form>
+                    <form action="../logic/modificar_stock_rapido.php" method="POST" class="w-1/2">
+                        <input type="hidden" name="catalogo_id" id="v_cat_id_sumar">
+                        <input type="hidden" name="inv_id" id="v_inv_id_sumar">
+                        <input type="hidden" name="equipo_id" value="<?php echo $equipo_id; ?>">
+                        <input type="hidden" name="accion" value="sumar">
+                        <button type="submit" class="w-full bg-blue-900/30 hover:bg-blue-600 text-blue-400 hover:text-white py-3 font-black text-[11px] border border-blue-900 transition"><?php echo $txt['STAFF_VER_INVENTARIO']['BTN_SUMAR_UNIDAD']; ?></button>
+                    </form>
+                </div>
+            </div>
+
+            <form action="../logic/procesar_reembolso_staff.php" method="POST" class="border-t border-red-900/30 pt-6">
+                <span class="block text-[9px] text-red-500 font-black uppercase tracking-widest mb-3 text-center"><?php echo $txt['STAFF_VER_INVENTARIO']['LBL_PURGA_OFICIAL']; ?></span>
+                <input type="hidden" name="tipo" value="vehiculo">
+                <input type="hidden" name="target_id" id="v_target_id">
+                <input type="hidden" name="equipo_id" value="<?php echo $equipo_id; ?>">
+                <input type="hidden" name="cantidad_final" id="v_qty_form">
+                
                 <div class="grid grid-cols-2 gap-4 mb-6">
                     <div><label class="stat-label block mb-2"><?php echo $txt['STAFF_VER_INVENTARIO']['LBL_CANT_PURGAR']; ?></label><input type="number" id="v_qty" value="1" min="1" oninput="calcVImpact()" class="terminal-input text-2xl font-black text-red-500"><div id="v_error_msg" class="text-red-500 text-[9px] font-black uppercase text-center mt-2 hidden animate-pulse"><?php echo $txt['STAFF_VER_INVENTARIO']['ERR_SUPERA_STOCK']; ?></div></div>
                     <div class="flex flex-col justify-end"><label class="flex items-center gap-3 cursor-pointer bg-black/40 p-3 border border-white/10 h-[50px]"><input type="checkbox" name="reembolsar" value="1" id="v_check" checked onchange="calcVImpact()" class="w-4 h-4 accent-green-500"><span class="text-[8px] font-black text-gray-400 uppercase leading-tight"><?php echo $txt['STAFF_VER_INVENTARIO']['LBL_DEV_FONDOS']; ?></span></label></div>
                 </div>
                 <div id="v_preview" class="space-y-2 mb-10 text-[10px] font-mono font-black transition-opacity">
-                    <div class="flex justify-between p-2 bg-white/5 border border-white/5"><span>CASH</span><div class="flex gap-2"><span id="v_d_old" class="text-gray-500"></span><span id="v_d_add" class="text-green-500"></span><span class="text-white">→</span><span id="v_d_new" class="text-green-500"></span></div></div>
-                    <div class="flex justify-between p-2 bg-white/5 border border-white/5"><span>STEEL</span><div class="flex gap-2"><span id="v_a_old" class="text-gray-500"></span><span id="v_a_add" class="text-white"></span><span class="text-white">→</span><span id="v_a_new" class="text-white"></span></div></div>
-                    <div class="flex justify-between p-2 bg-white/5 border border-white/5"><span>FUEL</span><div class="flex gap-2"><span id="v_p_old" class="text-gray-500"></span><span id="v_p_add" class="text-yellow-500"></span><span class="text-white">→</span><span id="v_p_new" class="text-yellow-500"></span></div></div>
+                    <div class="flex justify-between p-2 bg-white/5 border border-white/5"><span><?php echo $txt['STAFF_VER_INVENTARIO']['LBL_CASH']; ?></span><div class="flex gap-2"><span id="v_d_old" class="text-gray-500"></span><span id="v_d_add" class="text-green-500"></span><span class="text-white">→</span><span id="v_d_new" class="text-green-500"></span></div></div>
+                    <div class="flex justify-between p-2 bg-white/5 border border-white/5"><span><?php echo $txt['STAFF_VER_INVENTARIO']['LBL_STEEL']; ?></span><div class="flex gap-2"><span id="v_a_old" class="text-gray-500"></span><span id="v_a_add" class="text-white"></span><span class="text-white">→</span><span id="v_a_new" class="text-white"></span></div></div>
+                    <div class="flex justify-between p-2 bg-white/5 border border-white/5"><span><?php echo $txt['STAFF_VER_INVENTARIO']['LBL_FUEL']; ?></span><div class="flex gap-2"><span id="v_p_old" class="text-gray-500"></span><span id="v_p_add" class="text-yellow-500"></span><span class="text-white">→</span><span id="v_p_new" class="text-yellow-500"></span></div></div>
                 </div>
-                <div class="grid grid-cols-2 gap-4"><button type="submit" id="btn_v_confirm" class="bg-red-600 text-black py-5 font-black uppercase text-[11px] hover:bg-red-500 transition"><?php echo $txt['STAFF_VER_INVENTARIO']['BTN_EJECUTAR']; ?></button><button type="button" onclick="cerrarModal('modalVehiculo')" class="border border-white/10 text-gray-500 py-5 font-black uppercase text-[10px]"><?php echo $txt['STAFF_VER_INVENTARIO']['BTN_ABORTAR']; ?></button></div>
+                <div class="grid grid-cols-2 gap-4"><button type="submit" id="btn_v_confirm" class="bg-red-600 text-black py-5 font-black uppercase text-[11px] hover:bg-red-500 transition"><?php echo $txt['STAFF_VER_INVENTARIO']['BTN_EJECUTAR_PURGA']; ?></button><button type="button" onclick="cerrarModal('modalVehiculo')" class="border border-white/10 text-gray-500 py-5 font-black uppercase text-[10px]"><?php echo $txt['STAFF_VER_INVENTARIO']['BTN_ABORTAR']; ?></button></div>
             </form>
         </div>
     </div>
 
-    <div id="modalDestroyFlota" class="hidden fixed inset-0 bg-black/98 z-[300] flex items-center justify-center p-4">
-        <div class="m-panel w-full max-w-md border-red-600 bg-[#0a0a0a] p-10 text-center relative shadow-2xl"><button onclick="cerrarModal('modalDestroyFlota')" class="btn-close-modal">&times;</button><div class="text-red-600 text-5xl mb-6">☢️</div><h2 class="text-white font-black uppercase tracking-[0.2em] mb-4"><?php echo $txt['STAFF_VER_INVENTARIO']['MODAL_ANIQ_FLOTA']; ?></h2><p class="text-gray-400 text-xs font-bold leading-relaxed mb-10 uppercase"><?php echo $txt['STAFF_VER_INVENTARIO']['CONFIRM_FLOTA']; ?><span id="txt_slot"></span>.</p><form action="../logic/borrar_flota_staff.php" method="POST"><input type="hidden" name="flota_id" id="hid_flota_id"><input type="hidden" name="lider_id" value="<?php echo $equipo_id; ?>"><button type="submit" class="bg-red-600 text-black w-full py-4 font-black uppercase text-[11px] hover:bg-red-400 transition"><?php echo $txt['STAFF_VER_INVENTARIO']['BTN_EJECUTAR']; ?></button></form></div>
+    <div id="modalOtorgar" class="hidden fixed inset-0 bg-black/98 z-[200] flex items-center justify-center p-4 backdrop-blur-md">
+        <div class="m-panel w-full max-w-md glass-panel p-10 border-green-500/30 relative">
+            <button onclick="cerrarModal('modalOtorgar')" class="btn-close-modal">&times;</button>
+            <h2 id="mo_titulo" class="text-green-500 font-black text-center text-[10px] uppercase mb-8 tracking-[0.3em]"><?php echo $txt['STAFF_VER_INVENTARIO']['MODAL_OTORGAR_TITULO']; ?></h2>
+            <div class="text-center mb-6"><span id="mo_nombre" class="text-white font-black text-2xl uppercase font-['Cinzel']"></span></div>
+            
+            <form action="../logic/procesar_otorgar_staff.php" method="POST">
+                <input type="hidden" name="catalogo_id" id="mo_cat_id">
+                <input type="hidden" name="equipo_id" value="<?php echo $equipo_id; ?>">
+                <input type="hidden" name="tipo_entrega" id="mo_tipo_entrega">
+                
+                <div id="mo_unidades_div" class="mb-6 hidden">
+                    <label class="stat-label block mb-2 text-center"><?php echo $txt['STAFF_VER_INVENTARIO']['LBL_CANT_OTORGAR']; ?></label>
+                    <input type="number" name="cantidad" value="1" min="1" class="terminal-input text-2xl font-black text-green-500 w-full">
+                </div>
+
+                <div class="bg-black/40 p-4 border border-white/10 mb-8">
+                    <label class="flex items-center gap-4 cursor-pointer">
+                        <input type="checkbox" name="cobrar" value="1" class="w-5 h-5 accent-red-500">
+                        <span class="text-[10px] font-black text-gray-300 uppercase"><?php echo $txt['STAFF_VER_INVENTARIO']['LBL_COBRAR_VALOR']; ?></span>
+                    </label>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <button type="submit" class="bg-green-600 text-black py-5 font-black uppercase text-[11px] hover:bg-green-500 transition"><?php echo $txt['STAFF_VER_INVENTARIO']['BTN_CONFIRMAR_ENTREGA']; ?></button>
+                    <button type="button" onclick="cerrarModal('modalOtorgar')" class="border border-white/10 text-gray-500 py-5 font-black uppercase"><?php echo $txt['STAFF_VER_INVENTARIO']['BTN_ABORTAR']; ?></button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <script>
+        const txtJS = {
+            otorPatente: "<?php echo $txt['STAFF_VER_INVENTARIO']['JS_OTORGAR_PATENTE']; ?>",
+            darUnidades: "<?php echo $txt['STAFF_VER_INVENTARIO']['JS_DAR_UNIDADES']; ?>",
+            sinNaciones: "<?php echo $txt['STAFF_VER_INVENTARIO']['JS_SIN_NACIONES']; ?>"
+        };
+
         const resEq = { dinero: <?php echo $equipo['dinero']; ?>, acero: <?php echo $equipo['acero']; ?>, petroleo: <?php echo $equipo['petroleo']; ?> };
+        const todasLasNaciones = <?php echo json_encode($lista_naciones); ?>;
+        let filtroTipoActual = 'tanque';
+        let filtroNacionActual = todasLasNaciones.length > 0 ? todasLasNaciones[0] : '';
         let itemSel = null;
+
+        function initFiltros() { renderBotonesNaciones(); aplicarFiltrosTabla(); }
+
+        function setFiltroTipo(t) { 
+            filtroTipoActual = t; 
+            document.getElementById('btn_tipo_tanque').classList.toggle('grayscale', t !== 'tanque'); 
+            document.getElementById('btn_tipo_tanque').classList.toggle('opacity-70', t !== 'tanque'); 
+            document.getElementById('btn_tipo_avion').classList.toggle('grayscale', t !== 'avion'); 
+            document.getElementById('btn_tipo_avion').classList.toggle('opacity-70', t !== 'avion'); 
+            aplicarFiltrosTabla(); 
+        }
+
+        function renderBotonesNaciones() {
+            const cont = document.getElementById('contenedor_naciones');
+            cont.innerHTML = '';
+            if (todasLasNaciones.length === 0) {
+                cont.innerHTML = `<span class="text-gray-500 text-[10px]">${txtJS.sinNaciones}</span>`;
+                return;
+            }
+            todasLasNaciones.forEach(n => {
+                const btn = document.createElement('button'); 
+                btn.innerText = n;
+                btn.className = `px-4 py-1 text-[10px] font-black uppercase border transition ${n === filtroNacionActual ? 'bg-blue-900 text-white border-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]' : 'bg-black/50 text-gray-500 border-gray-800 hover:text-white'}`;
+                btn.onclick = () => { filtroNacionActual = n; renderBotonesNaciones(); aplicarFiltrosTabla(); };
+                cont.appendChild(btn);
+            });
+        }
+
+        function aplicarFiltrosTabla() {
+            let totalVisibles = 0; 
+            document.querySelectorAll('.bloque-nacion').forEach(b => {
+                if (b.dataset.nacion !== filtroNacionActual) { 
+                    b.style.display = 'none'; 
+                    return; 
+                }
+                b.style.display = 'block';
+                b.querySelectorAll('.tier-container').forEach(tier => {
+                    let hayAlgo = false;
+                    tier.querySelectorAll('.seccion-tipo').forEach(sec => {
+                        if (sec.dataset.tipo !== filtroTipoActual) { 
+                            sec.style.display = 'none'; 
+                        } else {
+                            let tarjetas = sec.querySelectorAll('.clase-container');
+                            if (tarjetas.length > 0) { 
+                                sec.style.display = 'block'; 
+                                hayAlgo = true; 
+                                totalVisibles++; 
+                            } else { 
+                                sec.style.display = 'none'; 
+                            }
+                        }
+                    });
+                    tier.style.display = hayAlgo ? 'block' : 'none';
+                });
+            });
+
+            const msgVacio = document.getElementById('mensaje_vacio');
+            const contHangar = document.getElementById('cont_hangar');
+
+            if (totalVisibles === 0) {
+                msgVacio.classList.remove('hidden');
+                contHangar.style.display = 'none';
+            } else {
+                msgVacio.classList.add('hidden');
+                contHangar.style.display = 'block';
+            }
+        }
 
         function toggleTier(el) {
             const content = el.nextElementSibling;
@@ -315,27 +392,35 @@ try {
             arrow.innerText = (content.style.display === 'none') ? '▼' : '▲';
         }
 
-        function abrirModalPatente(p, owners) {
-            itemSel = p; document.getElementById('p_target_id').value = p.plano_id; document.getElementById('p_nombre').innerText = p.nombre_vehiculo; document.getElementById('p_owners_txt').innerText = owners;
+        function abrirModalPatente(p) {
+            itemSel = p; document.getElementById('p_target_id').value = p.plano_id; document.getElementById('p_nombre').innerText = p.nombre_vehiculo;
             const stock = parseInt(p.stock_actual) || 0;
             if (stock > 0) { document.getElementById('p_vehiculos_container').classList.remove('hidden'); document.getElementById('p_stock_txt').innerText = stock; document.getElementById('p_check_vehiculos').checked = false; } 
             else { document.getElementById('p_vehiculos_container').classList.add('hidden'); document.getElementById('p_check_vehiculos').checked = false; }
             togglePRef(); abrirModal('modalPatente');
         }
-
         function togglePRef() {
             const checkRef = document.getElementById('p_check_reembolso').checked, checkVeh = document.getElementById('p_check_vehiculos').checked;
             let addD = 0, addA = 0, addP = 0;
-            if (checkRef) {
-                addD += parseInt(itemSel.costo_dinero);
-                if (checkVeh) { const qty = parseInt(itemSel.stock_actual); addD += qty * parseInt(itemSel.costo_dinero); addA += qty * parseInt(itemSel.costo_acero); addP += qty * parseInt(itemSel.costo_petroleo); }
-            }
+            if (checkRef) { addD += parseInt(itemSel.costo_dinero); if (checkVeh) { const qty = parseInt(itemSel.stock_actual); addD += qty * parseInt(itemSel.costo_dinero); addA += qty * parseInt(itemSel.costo_acero); addP += qty * parseInt(itemSel.costo_petroleo); } }
             const up = (id, old, add, sym) => { document.getElementById('p_'+id+'_old').innerText = old.toLocaleString() + sym; document.getElementById('p_'+id+'_add').innerText = (add > 0 ? "+" : "") + add.toLocaleString() + sym; document.getElementById('p_'+id+'_new').innerText = (old + add).toLocaleString() + sym; };
             up('d', resEq.dinero, addD, '$'); up('a', resEq.acero, addA, 'T'); up('p', resEq.petroleo, addP, 'L');
             document.getElementById('p_preview').style.opacity = checkRef ? "1" : "0.3";
         }
+        function abrirModalVehiculo(i) { 
+            itemSel = i; 
+            document.getElementById('v_target_id').value = i.inv_id; 
+            document.getElementById('v_inv_id_restar').value = i.inv_id;
+            document.getElementById('v_inv_id_sumar').value = i.inv_id;
+            document.getElementById('v_cat_id_sumar').value = i.id;
 
-        function abrirModalVehiculo(i) { itemSel = i; document.getElementById('v_target_id').value = i.inv_id; document.getElementById('v_nombre').innerText = i.nombre_vehiculo; document.getElementById('v_max_txt').innerText = i.stock_actual; document.getElementById('v_qty').max = i.stock_actual; document.getElementById('v_qty').value = 1; calcVImpact(); abrirModal('modalVehiculo'); }
+            document.getElementById('v_nombre').innerText = i.nombre_vehiculo; 
+            document.getElementById('v_max_txt').innerText = i.stock_actual; 
+            document.getElementById('v_qty').max = i.stock_actual; 
+            document.getElementById('v_qty').value = 1; 
+            calcVImpact(); 
+            abrirModal('modalVehiculo'); 
+        }
         function calcVImpact() {
             const q = parseInt(document.getElementById('v_qty').value) || 0, max = parseInt(itemSel.stock_actual), check = document.getElementById('v_check').checked, btn = document.getElementById('btn_v_confirm'), err = document.getElementById('v_error_msg');
             if (q > max || q <= 0) { document.getElementById('v_qty').classList.add('input-error'); btn.disabled = true; btn.style.opacity = "0.3"; err.classList.remove('hidden'); } else { document.getElementById('v_qty').classList.remove('input-error'); btn.disabled = false; btn.style.opacity = "1"; err.classList.add('hidden'); }
@@ -345,7 +430,22 @@ try {
             up('d', resEq.dinero, addD, '$'); up('a', resEq.acero, addA, 'T'); up('p', resEq.petroleo, addP, 'L');
             document.getElementById('v_preview').style.opacity = check ? "1" : "0.3";
         }
-        function confirmarBorradoFlota(id, slot) { document.getElementById('hid_flota_id').value = id; document.getElementById('txt_slot').innerText = slot; abrirModal('modalDestroyFlota'); }
+
+        function abrirModalOtorgar(i, tipo) {
+            document.getElementById('mo_cat_id').value = i.id;
+            document.getElementById('mo_tipo_entrega').value = tipo;
+            document.getElementById('mo_nombre').innerText = i.nombre_vehiculo;
+            
+            if(tipo === 'patente') {
+                document.getElementById('mo_titulo').innerText = txtJS.otorPatente;
+                document.getElementById('mo_unidades_div').classList.add('hidden');
+            } else {
+                document.getElementById('mo_titulo').innerText = txtJS.darUnidades;
+                document.getElementById('mo_unidades_div').classList.remove('hidden');
+            }
+            abrirModal('modalOtorgar');
+        }
+
         function abrirModal(id) { document.getElementById(id).classList.remove('hidden'); document.body.classList.add('modal-active'); }
         function cerrarModal(id) { document.getElementById(id).classList.add('hidden'); document.body.classList.remove('modal-active'); }
     </script>

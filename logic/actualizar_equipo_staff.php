@@ -39,15 +39,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $acero = (int)$_POST['acero'];
     $petroleo = (int)$_POST['petroleo'];
     $password = $_POST['password'];
+    
+    // NUEVO: Capturamos el string de naciones (Ej: "China, Francia")
+    $naciones_activas = $_POST['naciones_activas'] ?? '';
 
     try {
+        // Añadimos naciones_activas a la consulta de actualización
         $sql = "UPDATE cuentas SET 
                 nombre_equipo = :ne, 
                 username = :un, 
                 bandera_url = :bu, 
                 dinero = :d, 
                 acero = :a, 
-                petroleo = :p";
+                petroleo = :p,
+                naciones_activas = :na"; 
         
         $params = [
             ':ne' => $nombre_equipo,
@@ -56,6 +61,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             ':d' => $dinero,
             ':a' => $acero,
             ':p' => $petroleo,
+            ':na' => $naciones_activas, // Metemos la variable aquí
             ':id' => $id
         ];
 

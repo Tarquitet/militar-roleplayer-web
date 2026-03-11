@@ -29,7 +29,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $pdo->exec("DELETE FROM mercado_tradeos"); // Limpiar ofertas de intercambio
         $pdo->exec("DELETE FROM solicitudes_reembolso"); // Limpiar peticiones pendientes
         $pdo->exec("DELETE FROM planos_desbloqueados"); // Quitar patentes aprendidas
-        $pdo->exec("DELETE FROM catalogo_tienda"); // Esto vacía la tienda por completo
+        //$pdo->exec("DELETE FROM catalogo_tienda"); // Esto vacía la tienda por completo
 
         // 2. REINICIO DE EQUIPOS
         // Cambiamos el nombre a "Equipo [ID]" y ponemos una bandera por defecto
@@ -53,7 +53,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         // 4. LIMPIEZA DE ARCHIVOS (Borrar imágenes subidas)
         $carpetas_a_limpiar = [
             '../uploads/banderas/',
-            '../uploads/vehiculos/'
+            //'../uploads/vehiculos/' --> si se descomenta, al usar el botón nuke podría eliminar TODAS las imágenes de vehículos personalizados que hayan subido los equipos o staff en tienda.
         ];
 
         foreach ($carpetas_a_limpiar as $carpeta) {

@@ -19,20 +19,6 @@ try {
     $stmt_otros->execute([':id' => $lider_id]);
     $otros_equipos = $stmt_otros->fetchAll(PDO::FETCH_ASSOC);
 
-    $stmt_contratos = $pdo->prepare("
-        SELECT m.*, 
-               u.nombre_equipo as ofertante_nombre, u.bandera_url as ofertante_bandera,
-               c1.nombre_vehiculo AS vehiculo_ofrecido,
-               c2.nombre_vehiculo AS vehiculo_requerido
-        FROM mercado_tradeos m
-        JOIN cuentas u ON m.ofertante_id = u.id
-        LEFT JOIN catalogo_tienda c1 ON m.vehiculo_ofrecido_id = c1.id
-        LEFT JOIN catalogo_tienda c2 ON m.vehiculo_requerido_id = c2.id
-        WHERE m.receptor_id = :id AND m.estado = 'activo'
-    ");
-    $stmt_contratos->execute([':id' => $lider_id]);
-    $contratos_entrantes = $stmt_contratos->fetchAll(PDO::FETCH_ASSOC);
-
     $pdo = null;
 
 } catch (PDOException $e) { die("Error en el radar: " . $e->getMessage()); }
@@ -104,47 +90,6 @@ try {
                 <button onclick="abrirModal()" class="btn-m !text-[9px] px-8 py-2"><?php echo $txt['LIDER_DASHBOARD']['BTN_CONFIGURAR']; ?></button>
             </div>
         </div>
-
-        <?php if(!empty($contratos_entrantes)): ?>
-        <div class="mb-12">
-            <h2 class="text-blue-400 font-black uppercase text-[10px] tracking-[0.3em] mb-4 font-['Cinzel'] flex items-center gap-2 animate-pulse">
-                <?php echo $txt['LIDER_DASHBOARD']['TITULO_TRANSMISIONES']; ?> (<?php echo count($contratos_entrantes); ?>)
-            </h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <?php foreach($contratos_entrantes as $c): ?>
-                    <div class="flex flex-col border border-blue-900/50 shadow-[0_0_20px_rgba(59,130,246,0.15)] bg-[#0a0f1c]">
-                        <div class="bg-blue-900/20 p-3 border-b border-blue-900/30 flex items-center gap-3">
-                            <?php if($c['ofertante_bandera']): ?><img src="../<?php echo $c['ofertante_bandera']; ?>" class="w-8 h-5 border border-white/10"><?php endif; ?>
-                            <span class="text-[10px] text-white font-black uppercase tracking-widest"><?php echo htmlspecialchars($c['ofertante_nombre']); ?> <?php echo $txt['LIDER_DASHBOARD']['LBL_PROPONE']; ?></span>
-                        </div>
-                        <div class="p-4 flex-grow text-center flex flex-col justify-center gap-3">
-                            <div>
-                                <span class="block text-[8px] text-[var(--aoe-gold)] font-bold mb-1 tracking-widest uppercase"><?php echo $txt['LIDER_DASHBOARD']['LBL_TU_RECIBES']; ?></span>
-                                <div class="text-sm font-black text-white leading-relaxed">
-                                    <?php if($c['ofrece_dinero'] > 0) echo "<span class='text-green-500'>$".$c['ofrece_dinero']."</span><br>"; ?>
-                                    <?php if($c['ofrece_acero'] > 0) echo $c['ofrece_acero']." ".$txt['LIDER_DASHBOARD']['LBL_ACERO_T']."<br>"; ?>
-                                    <?php if($c['ofrece_petroleo'] > 0) echo "<span class='text-yellow-500'>".$c['ofrece_petroleo']." ".$txt['LIDER_DASHBOARD']['LBL_PETROLEO_L']."</span><br>"; ?>
-                                    <?php if($c['vehiculo_ofrecido_id']) echo "<span class='text-[var(--aoe-gold)] text-lg'>".$c['cantidad_ofrecida']."x ".htmlspecialchars($c['vehiculo_ofrecido'])."</span>"; ?>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="flex border-t border-blue-900/50">
-                            <form action="../logic/procesar_tradeo.php" method="POST" class="w-1/2">
-                                <input type="hidden" name="accion" value="aceptar">
-                                <input type="hidden" name="oferta_id" value="<?php echo $c['id']; ?>">
-                                <button class="w-full bg-green-900/40 hover:bg-green-700 text-green-500 hover:text-white font-black py-3 text-[9px] uppercase tracking-widest transition"><?php echo $txt['LIDER_DASHBOARD']['BTN_FIRMAR_PAGAR']; ?></button>
-                            </form>
-                            <form action="../logic/procesar_tradeo.php" method="POST" class="w-1/2">
-                                <input type="hidden" name="accion" value="cancelar">
-                                <input type="hidden" name="oferta_id" value="<?php echo $c['id']; ?>">
-                                <button class="w-full bg-red-950/40 hover:bg-red-800 text-red-500 hover:text-white font-black py-3 text-[9px] uppercase tracking-widest transition"><?php echo $txt['LIDER_DASHBOARD']['BTN_RECHAZAR']; ?></button>
-                            </form>
-                        </div>
-                    </div>
-                <?php endforeach; ?>
-            </div>
-        </div>
-        <?php endif; ?>
 
         <div>
             <h2 class="text-gray-500 font-black uppercase text-[10px] tracking-[0.3em] mb-4 font-['Cinzel'] flex items-center gap-2">

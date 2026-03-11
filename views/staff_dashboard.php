@@ -34,6 +34,10 @@ try {
     ");
     $historial_tradeos = $stmt_hist->fetchAll(PDO::FETCH_ASSOC);
 
+    // OBTENER TODA LA LISTA MAESTRA DE NACIONES
+    $stmt_nac = $pdo->query("SELECT nombre FROM naciones ORDER BY nombre ASC");
+    $todas_las_naciones = $stmt_nac->fetchAll(PDO::FETCH_COLUMN);
+
 } catch (PDOException $e) { die("FALLO EN ENLACE SATELITAL: " . $e->getMessage()); }
 ?>
 <!DOCTYPE html>
@@ -75,6 +79,25 @@ try {
             letter-spacing: 2px; 
             margin-bottom: 8px; 
             display: block; 
+        }
+
+        .btn-nacion-toggle {
+            background: #0a0a0a;
+            border: 1px solid #333;
+            color: #555;
+            padding: 8px 14px;
+            font-size: 9px;
+            font-weight: 900;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .btn-nacion-toggle:hover { border-color: #777; color: #fff; }
+        .btn-nacion-toggle.active {
+            background: rgba(197, 160, 89, 0.15);
+            border-color: var(--m-gold);
+            color: var(--m-gold);
+            box-shadow: 0 0 10px rgba(197, 160, 89, 0.4);
         }
     </style>
 </head>
@@ -124,30 +147,60 @@ try {
         </section>
 
         <h2 class="text-[10px] font-black uppercase tracking-[0.4em] mb-8 text-[var(--m-gold)]"><?php echo $txt['STAFF_DASHBOARD']['TIT_EXPEDIENTES']; ?></h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             <?php foreach($equipos as $e): ?>
-                <div class="m-panel !p-0 overflow-hidden bg-[#0d0e0a] border border-white/5 hover:border-yellow-500/30 transition-all group">
-                    <div class="p-6">
+                <div class="m-panel !p-0 overflow-hidden bg-[#0d0e0a] border border-white/5 hover:border-yellow-500/30 transition-all group flex flex-col h-full shadow-lg">
+                    <div class="p-6 flex flex-col flex-grow">
+                        
                         <div class="flex justify-between items-start mb-6">
-                            <div class="flex gap-4">
-                                <div class="w-14 h-14 bg-black border border-white/10 rounded overflow-hidden">
-                                    <img src="../<?php echo $e['bandera_url']; ?>" class="w-full h-full object-cover grayscale-[0.5] group-hover:grayscale-0">
+                            <div class="flex gap-4 overflow-hidden">
+                                <div class="w-12 h-12 bg-black border border-white/10 rounded shrink-0 overflow-hidden">
+                                    <?php if($e['bandera_url']): ?>
+                                        <img src="../<?php echo $e['bandera_url']; ?>" class="w-full h-full object-cover grayscale-[0.5] group-hover:grayscale-0 transition">
+                                    <?php else: ?>
+                                        <div class="w-full h-full flex items-center justify-center text-gray-800 text-xs font-black">?</div>
+                                    <?php endif; ?>
                                 </div>
-                                <div>
-                                    <h3 class="text-white font-black text-lg uppercase leading-none mb-2 font-['Cinzel']"><?php echo htmlspecialchars($e['nombre_equipo']); ?></h3>
-                                    <p class="text-[10px] text-gray-500 font-bold uppercase"><?php echo $txt['STAFF_DASHBOARD']['LBL_ID']; ?> <span class="text-white"><?php echo htmlspecialchars($e['username']); ?></span></p>
+                                <div class="min-w-0">
+                                    <h3 class="text-white font-black text-lg uppercase leading-tight font-['Cinzel'] truncate" title="<?php echo htmlspecialchars($e['nombre_equipo']); ?>">
+                                        <?php echo htmlspecialchars($e['nombre_equipo']); ?>
+                                    </h3>
+                                    <p class="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-1"><?php echo $txt['STAFF_DASHBOARD']['LBL_ID']; ?> <span class="text-gray-300"><?php echo htmlspecialchars($e['username']); ?></span></p>
                                 </div>
                             </div>
-                            <div class="flex flex-col gap-1">
-                                <button onclick='abrirModalEditar(<?php echo json_encode($e); ?>)' class="text-[9px] font-black uppercase text-yellow-500 border border-yellow-500/10 px-3 py-1.5 hover:bg-yellow-500 hover:text-black transition"><?php echo $txt['STAFF_DASHBOARD']['BTN_EDITAR']; ?></button>
-                                <a href="staff_ver_inventario.php?id=<?php echo $e['id']; ?>" class="text-[9px] font-black uppercase text-blue-400 border border-blue-500/10 px-3 py-1.5 hover:bg-blue-600 hover:text-white transition text-center"><?php echo $txt['STAFF_DASHBOARD']['BTN_INV']; ?></a>
+                            <div class="flex flex-col gap-1 shrink-0 ml-4">
+                                <button onclick='abrirModalEditar(<?php echo htmlspecialchars(json_encode($e), ENT_QUOTES, "UTF-8"); ?>)' class="text-[9px] font-black uppercase text-yellow-500 border border-yellow-500/20 px-3 py-1 hover:bg-yellow-500 hover:text-black transition tracking-widest"><?php echo $txt['STAFF_DASHBOARD']['BTN_EDITAR']; ?></button>
+                                <a href="staff_ver_inventario.php?id=<?php echo $e['id']; ?>" class="text-[9px] font-black uppercase text-blue-400 border border-blue-500/20 px-3 py-1 hover:bg-blue-600 hover:text-white transition text-center tracking-widest"><?php echo $txt['STAFF_DASHBOARD']['BTN_INV']; ?></a>
                             </div>
                         </div>
-                        <div class="grid grid-cols-3 gap-4 border-t border-white/5 pt-6 font-['Cinzel']">
-                            <div class="text-center"><span class="tactical-label"><?php echo $txt['STAFF_DASHBOARD']['LBL_CASH']; ?></span><span class="text-green-500 text-sm font-black">$<?php echo number_format($e['dinero']); ?></span></div>
-                            <div class="text-center border-x border-white/5"><span class="tactical-label"><?php echo $txt['STAFF_DASHBOARD']['LBL_STEEL']; ?></span><span class="text-white text-sm font-black"><?php echo number_format($e['acero']); ?>T</span></div>
-                            <div class="text-center"><span class="tactical-label"><?php echo $txt['STAFF_DASHBOARD']['LBL_FUEL']; ?></span><span class="text-yellow-500 text-sm font-black"><?php echo number_format($e['petroleo']); ?>L</span></div>
+
+                        <div class="mb-6 flex-grow">
+                            <span class="text-[8px] text-gray-600 font-black uppercase block mb-2 tracking-widest"><?php echo $txt['STAFF_DASHBOARD']['LBL_PAIS_ASIGNADO']; ?></span>
+                            <div class="flex flex-wrap gap-1.5">
+                                <?php 
+                                // Limpiamos el string de países y lo convertimos en array
+                                $nacs = array_filter(array_map('trim', explode(',', $e['naciones_activas'] ?? '')));
+                                
+                                if(!empty($nacs)): 
+                                    foreach($nacs as $n): 
+                                ?>
+                                    <span class="bg-[#111] border border-[#333] text-[#c5a059] text-[9px] font-black px-2 py-0.5 uppercase tracking-widest shadow-sm"><?php echo htmlspecialchars($n); ?></span>
+                                <?php 
+                                    endforeach; 
+                                else: 
+                                ?>
+                                    <span class="bg-red-950/20 border border-red-900/30 text-red-500 text-[8px] font-black px-2 py-0.5 uppercase tracking-widest"><?php echo $txt['STAFF_DASHBOARD']['LBL_NO_PAIS']; ?></span>
+                                <?php endif; ?>
+                            </div>
                         </div>
+
+                        <div class="grid grid-cols-3 gap-2 border-t border-white/5 pt-4 font-['Cinzel'] mt-auto">
+                            <div class="text-center bg-black/40 p-2 rounded border border-white/5"><span class="tactical-label !mb-1">CASH</span><span class="text-green-500 text-xs font-black">$<?php echo number_format($e['dinero']); ?></span></div>
+                            <div class="text-center bg-black/40 p-2 rounded border border-white/5"><span class="tactical-label !mb-1">STEEL</span><span class="text-white text-xs font-black"><?php echo number_format($e['acero']); ?>T</span></div>
+                            <div class="text-center bg-black/40 p-2 rounded border border-white/5"><span class="tactical-label !mb-1">FUEL</span><span class="text-yellow-500 text-xs font-black"><?php echo number_format($e['petroleo']); ?>L</span></div>
+                        </div>
+                        
                     </div>
                 </div>
             <?php endforeach; ?>
@@ -206,7 +259,7 @@ try {
             <div class="m-panel bg-red-950/5 border-red-900/20 p-8 flex justify-between items-center shadow-[inset_0_0_20px_rgba(220,38,38,0.05)]">
                 <div>
                     <h3 class="text-red-500 font-black uppercase tracking-[0.3em] mb-1 font-['Cinzel']"><?php echo $txt['STAFF_DASHBOARD']['MODAL_NUKE_TITULO']; ?></h3>
-                    <p class="text-[10px] text-gray-500 uppercase font-bold tracking-widest">Borrado total del progreso para iniciar nueva temporada.</p>
+                    <p class="text-[10px] text-gray-500 uppercase font-bold tracking-widest"><?php echo $txt['STAFF_DASHBOARD']['MODAL_NUKE_DESC']; ?></p>
                 </div>
                 <button onclick="abrirModal('modalNuke')" class="bg-red-600 text-black px-10 py-4 font-black uppercase text-[11px] hover:bg-red-500 transition shadow-[0_0_30px_rgba(220,38,38,0.2)]">
                     <?php echo $txt['STAFF_DASHBOARD']['BTN_NUKE']; ?>
@@ -229,6 +282,22 @@ try {
                     <div>
                         <label class="tactical-label"><?php echo $txt['STAFF_DASHBOARD']['LBL_ID_ACCESO']; ?></label>
                         <input type="text" name="username" id="edit_username" class="terminal-input text-yellow-500/40" readonly>
+                    </div>
+                </div>
+
+                <div class="mt-8 bg-[#0a0a0a] p-5 border border-white/5 shadow-inner">
+                    <label class="tactical-label text-blue-400"><?php echo $txt['STAFF_DASHBOARD']['BTN_CONF_PAISES']; ?></label>
+                    <input type="hidden" name="naciones_activas" id="edit_naciones">
+                    
+                    <div class="flex flex-wrap gap-2 mt-3" id="contenedor_naciones">
+                        <?php foreach($todas_las_naciones as $nacion): ?>
+                            <button type="button" 
+                                    class="btn-nacion-toggle" 
+                                    data-nacion="<?php echo htmlspecialchars($nacion); ?>"
+                                    onclick="toggleNacion(this)">
+                                <?php echo htmlspecialchars($nacion); ?>
+                            </button>
+                        <?php endforeach; ?>
                     </div>
                 </div>
 
@@ -345,17 +414,53 @@ try {
 
     <script>
         function togglePass() { const i = document.getElementById('pass_input'); i.type = i.type === 'password' ? 'text' : 'password'; }
+        
         function abrirModalEditar(e) {
             document.getElementById('edit_id').value = e.id;
             document.getElementById('edit_equipo').value = e.nombre_equipo;
             document.getElementById('edit_username').value = e.username; 
             document.getElementById('edit_img').value = e.bandera_url;
+            
+            // --- LÓGICA DE ILUMINACIÓN DE NACIONES ---
+            document.getElementById('edit_naciones').value = e.naciones_activas || ''; 
+            
+            // Creamos un array limpio con las naciones que el equipo YA tiene
+            const nacionesEquipo = e.naciones_activas ? e.naciones_activas.split(',').map(n => n.trim()) : [];
+            
+            // Recorremos TODOS los 10 botones del modal
+            document.querySelectorAll('.btn-nacion-toggle').forEach(btn => {
+                const nombreNacion = btn.getAttribute('data-nacion');
+                // Si el equipo tiene esta nación, encendemos el botón. Si no, lo apagamos.
+                if (nacionesEquipo.includes(nombreNacion)) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+            // -----------------------------------------
+
             document.getElementById('edit_money').value = e.dinero;
             document.getElementById('edit_steel').value = e.acero;
             document.getElementById('edit_oil').value = e.petroleo;
             document.getElementById('modalEdit').classList.remove('hidden');
             document.body.classList.add('modal-active');
         }
+
+        // FUNCIÓN CUANDO EL STAFF HACE CLIC EN UN BOTÓN DE PAÍS
+        function toggleNacion(btn) {
+            // Cambia visualmente el botón (lo enciende o lo apaga)
+            btn.classList.toggle('active');
+            
+            // Recolectamos los nombres de TODOS los botones que quedaron encendidos
+            const activas = [];
+            document.querySelectorAll('.btn-nacion-toggle.active').forEach(b => {
+                activas.push(b.getAttribute('data-nacion'));
+            });
+            
+            // Juntamos los nombres con comas y los metemos al input oculto para enviarlos por PHP
+            document.getElementById('edit_naciones').value = activas.join(', ');
+        }
+
         function abrirModalImpacto(s) {
             document.getElementById('imp_id').value = s.id;
             document.getElementById('imp_faccion').innerText = s.nombre_equipo;
@@ -374,7 +479,20 @@ try {
             document.getElementById(id).classList.remove('hidden'); 
             document.body.classList.add('modal-active'); 
         }
-        function cerrarModal(id) { document.getElementById(id).classList.add('hidden'); document.body.classList.remove('modal-active'); }
+        
+        function cerrarModal(id) { 
+            document.getElementById(id).classList.add('hidden'); 
+            document.body.classList.remove('modal-active'); 
+            
+            // FIX ISSUE #30: Protocolo de seguridad del Nuke
+            if (id === 'modalNuke') {
+                const inputNuke = document.getElementById('confirm_word');
+                if (inputNuke) {
+                    inputNuke.value = ''; // Borramos la palabra
+                    validarNuke('');      // Volvemos a bloquear el botón rojo
+                }
+            }
+        }
 
         function borrarBanderaStaff() {
             // Abrimos el modal de confirmación
