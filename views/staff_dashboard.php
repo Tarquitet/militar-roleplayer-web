@@ -216,6 +216,7 @@ try {
                             <th class="p-4"><?php echo $txt['STAFF_DASHBOARD']['TH_RECEPTOR']; ?></th>
                             <th class="p-4"><?php echo $txt['STAFF_DASHBOARD']['TH_CONTENIDO']; ?></th>
                             <th class="p-4 text-right"><?php echo $txt['STAFF_DASHBOARD']['TH_FECHA']; ?></th>
+                            <th class="p-4 text-center">ACCIÓN</th> </tr>
                         </tr>
                     </thead>
                     <tbody>
@@ -246,6 +247,14 @@ try {
                                             </span> 
                                         <?php endif; ?>
                                     </div>
+                                </td>
+
+                                <td class="p-4 text-center">
+                                    <?php if($h['estado'] === 'completado'): ?>
+                                        <button onclick='abrirModalRevertir(<?php echo htmlspecialchars(json_encode($h), ENT_QUOTES, "UTF-8"); ?>)' class="bg-red-900/20 text-red-500 border border-red-900 px-3 py-1 text-[8px] font-black uppercase hover:bg-red-600 hover:text-white transition tracking-widest">REVERTIR</button>
+                                    <?php else: ?>
+                                        <span class="text-gray-600 text-[8px]">-</span>
+                                    <?php endif; ?>
                                 </td>
 
                                 <td class="p-4 text-right text-gray-600 font-mono"><?php echo date('d/m H:i', strtotime($h['fecha_creacion'])); ?></td>
@@ -412,6 +421,63 @@ try {
         </div>
     </div>
 
+    <div id="modalRevertir" class="hidden fixed inset-0 bg-black/98 z-[400] flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="m-panel w-full max-w-lg border-red-600 bg-[#0a0a0a] p-8 relative shadow-2xl">
+            <button onclick="cerrarModal('modalRevertir')" class="absolute top-4 right-4 text-gray-500 hover:text-white text-xl">&times;</button>
+            <div class="flex items-center gap-3 mb-6 border-b border-red-900/30 pb-4">
+                <span class="text-red-600 text-3xl">⚠️</span>
+                <div>
+                    <h2 class="text-white font-black uppercase tracking-[0.2em] text-lg font-['Cinzel']">ANULAR TRANSACCIÓN</h2>
+                    <span class="text-gray-500 text-[9px] font-bold tracking-widest uppercase">Protocolo de Reembolso Selectivo</span>
+                </div>
+            </div>
+
+            <div class="bg-black/50 p-4 border border-white/5 mb-6 text-center">
+                <span class="text-blue-400 font-black text-xs uppercase" id="rev_ofertante"></span>
+                <span class="text-gray-600 mx-2">VS</span>
+                <span class="text-yellow-500 font-black text-xs uppercase" id="rev_receptor"></span>
+            </div>
+
+            <form action="../logic/revertir_tradeo_staff.php" method="POST" id="formRevertir">
+                <input type="hidden" name="tradeo_id" id="rev_tradeo_id">
+                <input type="hidden" name="id_ofertante" id="rev_id_ofertante">
+                <input type="hidden" name="id_receptor" id="rev_id_receptor">
+
+                <p class="text-gray-400 text-[10px] uppercase font-bold mb-4">Seleccione qué elementos desea revertir a sus dueños originales:</p>
+
+                <div class="space-y-3 mb-8">
+                    <label id="lbl_rev_vehiculo" class="flex items-center p-3 border border-gray-800 hover:border-red-900 bg-[#111] cursor-pointer transition group hidden">
+                        <input type="checkbox" name="rev_vehiculo" value="1" class="mr-3 w-4 h-4 accent-red-600 bg-black border-gray-700">
+                        <div class="flex flex-col">
+                            <span class="text-white text-[10px] font-black uppercase">RECUPERAR VEHÍCULO</span>
+                            <span class="text-gray-500 text-[9px]" id="txt_rev_vehiculo"></span>
+                        </div>
+                    </label>
+
+                    <label id="lbl_rev_enviados" class="flex items-center p-3 border border-gray-800 hover:border-red-900 bg-[#111] cursor-pointer transition group hidden">
+                        <input type="checkbox" name="rev_enviados" value="1" class="mr-3 w-4 h-4 accent-red-600 bg-black border-gray-700">
+                        <div class="flex flex-col">
+                            <span class="text-white text-[10px] font-black uppercase">REVERTIR OFERTA MONETARIA</span>
+                            <span class="text-gray-500 text-[9px]" id="txt_rev_enviados"></span>
+                        </div>
+                    </label>
+
+                    <label id="lbl_rev_cobrados" class="flex items-center p-3 border border-gray-800 hover:border-red-900 bg-[#111] cursor-pointer transition group hidden">
+                        <input type="checkbox" name="rev_cobrados" value="1" class="mr-3 w-4 h-4 accent-red-600 bg-black border-gray-700">
+                        <div class="flex flex-col">
+                            <span class="text-white text-[10px] font-black uppercase">REVERTIR COBRO (PAGO RECIBIDO)</span>
+                            <span class="text-gray-500 text-[9px]" id="txt_rev_cobrados"></span>
+                        </div>
+                    </label>
+                </div>
+
+                <button type="submit" class="w-full bg-red-600 text-black py-4 font-black uppercase text-[11px] hover:bg-red-500 transition shadow-[0_0_20px_rgba(220,38,38,0.2)] tracking-[0.2em]">
+                    EJECUTAR REEMBOLSO SELECTIVO
+                </button>
+            </form>
+        </div>
+    </div>
+
     <script>
         function togglePass() { const i = document.getElementById('pass_input'); i.type = i.type === 'password' ? 'text' : 'password'; }
         
@@ -532,6 +598,46 @@ try {
                 btn.classList.add('bg-gray-800', 'text-gray-500', 'cursor-not-allowed');
                 btn.classList.remove('bg-red-600', 'text-black', 'hover:bg-red-500', 'shadow-lg');
             }
+        }
+
+        function abrirModalRevertir(t) {
+            document.getElementById('rev_tradeo_id').value = t.id;
+            document.getElementById('rev_id_ofertante').value = t.ofertante_id;
+            document.getElementById('rev_id_receptor').value = t.receptor_id;
+            
+            document.getElementById('rev_ofertante').innerText = t.ofertante;
+            document.getElementById('rev_receptor').innerText = t.receptor;
+
+            // 1. Check de Vehículo (Si hubo vehículo involucrado)
+            const lblVeh = document.getElementById('lbl_rev_vehiculo');
+            if (t.vehiculo_ofrecido_id && t.vehiculo_ofrecido_id > 0) {
+                lblVeh.classList.remove('hidden');
+                document.getElementById('txt_rev_vehiculo').innerText = `Restar x${t.cantidad_ofrecida} ${t.nombre_vehiculo} a ${t.receptor} y dárselo a ${t.ofertante}`;
+            } else {
+                lblVeh.classList.add('hidden');
+            }
+
+            // 2. Check de Oferta (Lo que dio el Ofertante al inicio)
+            const lblEnv = document.getElementById('lbl_rev_enviados');
+            if (t.ofrece_dinero > 0 || t.ofrece_acero > 0 || t.ofrece_petroleo > 0) {
+                lblEnv.classList.remove('hidden');
+                document.getElementById('txt_rev_enviados').innerText = `Restar recursos a ${t.receptor} y devolver a ${t.ofertante}`;
+            } else {
+                lblEnv.classList.add('hidden');
+            }
+
+            // 3. Check de Cobro (Lo que pagó el Receptor)
+            const lblCob = document.getElementById('lbl_rev_cobrados');
+            if (t.pide_dinero > 0 || t.pide_acero > 0 || t.pide_petroleo > 0) {
+                lblCob.classList.remove('hidden');
+                document.getElementById('txt_rev_cobrados').innerText = `Restar pago a ${t.ofertante} y devolver dinero/recursos a ${t.receptor}`;
+            } else {
+                lblCob.classList.add('hidden');
+            }
+
+            // Limpiamos los checks antes de abrir
+            document.getElementById('formRevertir').reset();
+            abrirModal('modalRevertir');
         }
     </script>
 </body>
