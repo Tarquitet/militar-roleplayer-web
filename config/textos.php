@@ -536,5 +536,7 @@ return [
         'ERR_JS_FONDOS' => 'ERROR: No tienes suficientes recursos para esta oferta.',
         'ERR_JS_VACIA' => 'ERROR: Debes ofrecer al menos un recurso o un vehículo para iniciar el trato.',
         'ERR_JS_VEHICULO' => 'ERROR: Debes seleccionar un vehículo para enviar.',
+        'GESTION_FLOTA' => 'GESTIÓN DE FLOTA - SLOT ',
+        'GUARDAR_ORDEN_FLOTA' => ' GUARDAR ORDEN DE FLOTA',
     ],
 ];

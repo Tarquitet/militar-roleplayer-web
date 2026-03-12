@@ -537,7 +537,7 @@ try {
     <div id="modalFlota" class="hidden fixed inset-0 bg-black/98 z-[300] flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="m-panel w-full max-w-md border-blue-600 bg-[#0a0a0a] p-10 relative shadow-2xl">
             <button type="button" onclick="cerrarModal('modalFlota')" class="btn-close-modal">&times;</button>
-            <h2 class="text-blue-500 font-black text-center text-[10px] uppercase mb-8 tracking-[0.3em] border-b border-blue-900/50 pb-2">GESTIÓN DE FLOTA - SLOT <span id="slot_num"></span></h2>
+            <h2 class="text-blue-500 font-black text-center text-[10px] uppercase mb-8 tracking-[0.3em] border-b border-blue-900/50 pb-2"><?php echo $txt['LIDER_INVENTARIO']['GESTION_FLOTA']; ?><span id="slot_num"></span></h2>
             
             <form action="../logic/gestionar_flota.php" method="POST">
                 <input type="hidden" name="slot" id="slot_input">
@@ -568,7 +568,7 @@ try {
                 </div>
                 
                 <button type="submit" class="w-full bg-blue-600 text-white py-5 font-black uppercase text-[11px] hover:bg-blue-500 transition shadow-lg mt-8 tracking-widest">
-                    GUARDAR ORDEN DE FLOTA
+                    <?php echo $txt['LIDER_INVENTARIO']['GUARDAR_ORDEN_FLOTA']; ?>
                 </button>
             </form>
         </div>
