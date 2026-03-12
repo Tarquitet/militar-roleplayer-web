@@ -20,6 +20,15 @@ try {
     $stmt_inv->execute([':id' => $equipo_id]);
     $inventario = $stmt_inv->fetchAll(PDO::FETCH_ASSOC);
 
+    // --- FLOTAS X EQUIPO ---
+    $stmt_f = $pdo->prepare("SELECT * FROM flotas WHERE cuenta_id = :id ORDER BY slot ASC");
+    $stmt_f->execute([':id' => $equipo_id]);
+    $flotas_listado = $stmt_f->fetchAll(PDO::FETCH_ASSOC);
+    
+    $mis_flotas = [1 => null, 2 => null, 3 => null];
+    foreach($flotas_listado as $f) { $mis_flotas[$f['slot']] = $f; }
+    // ------------------
+
     // Obtener patentes del equipo
     $stmt_p = $pdo->prepare("SELECT id as plano_id, catalogo_id FROM planos_desbloqueados WHERE cuenta_id = :id");
     $stmt_p->execute([':id' => $equipo_id]);
@@ -61,10 +70,6 @@ try {
         $catalogo_equipo[$nacion][$tier][$tipo][$clase][] = $cn;
     }
 
-    $stmt_f = $pdo->prepare("SELECT * FROM flotas WHERE cuenta_id = :id ORDER BY slot ASC");
-    $stmt_f->execute([':id' => $equipo_id]);
-    $flotas_listado = $stmt_f->fetchAll(PDO::FETCH_ASSOC);
-
     $orden_tanques = ['Ligero', 'Mediano', 'Pesado', 'Caza Tanques', 'AAA'];
     $orden_aviones = ['Caza', 'Interceptor', 'Avion de Ataque', 'Bombardero'];
 
@@ -98,6 +103,9 @@ try {
         .stat-grid-value { font-size: 9px; font-weight: 900; font-family: 'Space Mono', monospace; }
         
         .not-owned .veh-img { filter: grayscale(1) opacity(0.3); }
+
+        .slot-box { border: 2px dashed #222; height: auto; min-height: 400px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #090909; transition: 0.3s; }
+        .slot-box.filled { border-style: solid; border-color: #1a1a1a; justify-content: flex-start; padding: 25px; }
     </style>
 </head>
 <body class="bg-[#0a0b08] text-[var(--text-main)] min-h-screen pb-20" onload="initFiltros()">
@@ -122,6 +130,7 @@ try {
             <div class="flex gap-4 mb-4 border-b border-white/5 pb-4">
                 <button id="btn_tipo_tanque" onclick="setFiltroTipo('tanque')" class="btn-m !text-[10px]"><?php echo $txt['STAFF_VER_INVENTARIO']['CAT_TANQUES']; ?></button>
                 <button id="btn_tipo_avion" onclick="setFiltroTipo('avion')" class="btn-m !text-[10px] grayscale opacity-70"><?php echo $txt['STAFF_VER_INVENTARIO']['CAT_AVIONES']; ?></button>
+                <button id="btn_tipo_flotas" onclick="setFiltroTipo('flotas')" class="btn-m !text-[10px] grayscale opacity-70"><?php echo $txt['STAFF_VER_INVENTARIO']['CAT_FLOTAS']; ?></button>
             </div>
             <div class="flex items-center gap-4">
                 <span class="text-[var(--aoe-gold)] text-[10px] font-black uppercase tracking-widest"><?php echo $txt['STAFF_VER_INVENTARIO']['LBL_NACION']; ?></span>
@@ -200,7 +209,54 @@ try {
                 <?php endforeach; ?>
             </div>
         </div>
+
+        <div id="cont_flotas" class="hidden grid grid-cols-1 md:grid-cols-3 gap-10 mt-8">
+                <?php for($s=1; $s<=3; $s++): $fl = $mis_flotas[$s]; ?>
+                    <div class="slot-box relative <?php echo $fl ? 'filled' : ''; ?>">
+                        <?php if(!$fl): ?>
+                            <span class="text-[11px] font-black text-gray-700 uppercase tracking-[0.3em]">SLOT <?php echo $s; ?><?php echo $txt['STAFF_VER_INVENTARIO']['FLT_VACIO']; ?></span>
+                        <?php else: ?>
+                            
+                            <form action="../logic/borrar_flota_staff.php" method="POST" class="absolute top-4 right-4 z-10">
+                                <input type="hidden" name="flota_id" value="<?php echo $fl['id']; ?>">
+                                <input type="hidden" name="lider_id" value="<?php echo $equipo_id; ?>">
+                                <button type="button" onclick="prepararDestruccionFlota(<?php echo $fl['id']; ?>)" class="absolute top-4 right-4 z-10 bg-black/80 text-red-500 border border-red-900/50 px-3 py-1 text-[8px] font-black uppercase hover:bg-red-600 hover:text-white transition">
+                                DESTRUIR
+                                </button>
+                            </form>
+                            
+                            <div class="w-full text-center border-b border-yellow-900/20 pb-4 mb-8 text-[#c5a059] font-black text-[11px] uppercase tracking-widest"><?php echo $txt['STAFF_VER_INVENTARIO']['FLT_ACTIVO']; ?><?php echo $s; ?></div>
+                            <div class="w-full space-y-6">
+                                <div><span class="stat-label block mb-1">U<?php echo $txt['STAFF_VER_INVENTARIO']['FLT_INSIGNIA']; ?></span><div class="bg-black p-3 border border-white/5 text-white font-bold uppercase text-sm"><?php echo htmlspecialchars($fl['insignia']); ?></div></div>
+                                <div class="grid grid-cols-2 gap-3 text-gray-400 uppercase text-[10px]">
+                                    <?php for($esc=1;$esc<=4;$esc++): ?>
+                                        <div><span class="stat-label block mb-1"><?php echo $txt['STAFF_VER_INVENTARIO']['FLT_ESCOLTAS']; ?><?php echo $esc; ?></span><div class="bg-black p-2 border border-white/5"><?php echo htmlspecialchars($fl['escolta_'.$esc] ?: '-'); ?></div></div>
+                                    <?php endfor; ?>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                <?php endfor; ?>
+            </div>
     </main>
+
+    <div id="modalDestruirFlota" class="hidden fixed inset-0 bg-black/98 z-[300] flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="m-panel w-full max-w-sm border-red-600 bg-[#0a0a0a] p-8 text-center relative shadow-2xl">
+            <button type="button" onclick="cerrarModal('modalDestruirFlota')" class="btn-close-modal">&times;</button>
+            <div class="text-red-600 text-5xl mb-4"><?php echo $txt['STAFF_VER_INVENTARIO']['FLT_DESTRUIR_ICON']; ?></div>
+            <h2 class="text-white font-black uppercase tracking-[0.2em] mb-4 text-sm"><?php echo $txt['STAFF_VER_INVENTARIO']['MODAL_ANIQ_FLOTA']; ?></h2>
+            <p class="text-gray-400 text-xs font-bold leading-relaxed mb-8 uppercase"><?php echo $txt['STAFF_VER_INVENTARIO']['CONFIRM_FLOTA_DESC']; ?></p>
+            
+            <form action="../logic/borrar_flota_staff.php" method="POST">
+                <input type="hidden" name="flota_id" id="form_flota_id_destruir">
+                <input type="hidden" name="lider_id" value="<?php echo $equipo_id; ?>">
+                <div class="flex gap-4">
+                    <button type="submit" class="flex-1 bg-red-600 text-black py-3 font-black uppercase text-[10px] hover:bg-red-500 transition tracking-widest"><?php echo $txt['STAFF_VER_INVENTARIO']['BTN_FLT_CONFIRMAR']; ?></button>
+                    <button type="button" onclick="cerrarModal('modalDestruirFlota')" class="flex-1 border border-gray-600 text-gray-500 py-3 font-black uppercase text-[10px] hover:bg-gray-800 hover:text-white transition tracking-widest"><?php echo $txt['STAFF_VER_INVENTARIO']['BTN_FLT_CANCELAR']; ?></button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <div id="modalPatente" class="hidden fixed inset-0 bg-black/98 z-[200] flex items-center justify-center p-4 backdrop-blur-md">
         <div class="m-panel w-full max-w-md glass-panel p-10 border-red-500/30 relative">
@@ -305,6 +361,8 @@ try {
         </div>
     </div>
 
+
+
     <script>
         const txtJS = {
             otorPatente: "<?php echo $txt['STAFF_VER_INVENTARIO']['JS_OTORGAR_PATENTE']; ?>",
@@ -322,11 +380,31 @@ try {
 
         function setFiltroTipo(t) { 
             filtroTipoActual = t; 
+            
             document.getElementById('btn_tipo_tanque').classList.toggle('grayscale', t !== 'tanque'); 
             document.getElementById('btn_tipo_tanque').classList.toggle('opacity-70', t !== 'tanque'); 
             document.getElementById('btn_tipo_avion').classList.toggle('grayscale', t !== 'avion'); 
             document.getElementById('btn_tipo_avion').classList.toggle('opacity-70', t !== 'avion'); 
-            aplicarFiltrosTabla(); 
+            
+            const btnFlotas = document.getElementById('btn_tipo_flotas');
+            if(btnFlotas) {
+                btnFlotas.classList.toggle('grayscale', t !== 'flotas'); 
+                btnFlotas.classList.toggle('opacity-70', t !== 'flotas');
+            }
+
+            if(t === 'flotas') {
+                document.getElementById('cont_hangar').style.display = 'none';
+                document.getElementById('mensaje_vacio').classList.add('hidden');
+                document.getElementById('cont_flotas').classList.remove('hidden');
+                
+                document.getElementById('contenedor_naciones').style.opacity = '0.2';
+                document.getElementById('contenedor_naciones').style.pointerEvents = 'none';
+            } else {
+                document.getElementById('cont_flotas').classList.add('hidden');
+                document.getElementById('contenedor_naciones').style.opacity = '1';
+                document.getElementById('contenedor_naciones').style.pointerEvents = 'auto';
+                aplicarFiltrosTabla(); 
+            }
         }
 
         function renderBotonesNaciones() {
@@ -448,6 +526,11 @@ try {
 
         function abrirModal(id) { document.getElementById(id).classList.remove('hidden'); document.body.classList.add('modal-active'); }
         function cerrarModal(id) { document.getElementById(id).classList.add('hidden'); document.body.classList.remove('modal-active'); }
+
+        function prepararDestruccionFlota(id) {
+            document.getElementById('form_flota_id_destruir').value = id;
+            abrirModal('modalDestruirFlota');
+        }
     </script>
 </body>
 </html>

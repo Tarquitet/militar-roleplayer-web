@@ -534,6 +534,46 @@ try {
         </div>
     </div>
 
+    <div id="modalFlota" class="hidden fixed inset-0 bg-black/98 z-[300] flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="m-panel w-full max-w-md border-blue-600 bg-[#0a0a0a] p-10 relative shadow-2xl">
+            <button type="button" onclick="cerrarModal('modalFlota')" class="btn-close-modal">&times;</button>
+            <h2 class="text-blue-500 font-black text-center text-[10px] uppercase mb-8 tracking-[0.3em] border-b border-blue-900/50 pb-2">GESTIÓN DE FLOTA - SLOT <span id="slot_num"></span></h2>
+            
+            <form action="../logic/gestionar_flota.php" method="POST">
+                <input type="hidden" name="slot" id="slot_input">
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="stat-label block mb-2"><?php echo $txt['LIDER_INVENTARIO']['LBL_UNIDAD_INSIGNIA']; ?></label>
+                        <input type="text" name="insignia" id="in_ins" class="f-input border-blue-900/50 focus:border-blue-500" required placeholder="Ej: Acorazado Bismarck">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="stat-label block mb-2"><?php echo $txt['LIDER_INVENTARIO']['LBL_ESC']; ?> 1</label>
+                            <input type="text" name="escolta_1" id="in_e1" class="f-input" placeholder="Opcional">
+                        </div>
+                        <div>
+                            <label class="stat-label block mb-2"><?php echo $txt['LIDER_INVENTARIO']['LBL_ESC']; ?> 2</label>
+                            <input type="text" name="escolta_2" id="in_e2" class="f-input" placeholder="Opcional">
+                        </div>
+                        <div>
+                            <label class="stat-label block mb-2"><?php echo $txt['LIDER_INVENTARIO']['LBL_ESC']; ?> 3</label>
+                            <input type="text" name="escolta_3" id="in_e3" class="f-input" placeholder="Opcional">
+                        </div>
+                        <div>
+                            <label class="stat-label block mb-2"><?php echo $txt['LIDER_INVENTARIO']['LBL_ESC']; ?> 4</label>
+                            <input type="text" name="escolta_4" id="in_e4" class="f-input" placeholder="Opcional">
+                        </div>
+                    </div>
+                </div>
+                
+                <button type="submit" class="w-full bg-blue-600 text-white py-5 font-black uppercase text-[11px] hover:bg-blue-500 transition shadow-lg mt-8 tracking-widest">
+                    GUARDAR ORDEN DE FLOTA
+                </button>
+            </form>
+        </div>
+    </div>
+
     <script>
         const resActual = { d: <?php echo $user['dinero']; ?>, a: <?php echo $user['acero']; ?>, p: <?php echo $user['petroleo']; ?> };
         const invGlobal = <?php echo json_encode($inventario_global); ?>;

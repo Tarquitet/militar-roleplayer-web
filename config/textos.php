@@ -419,6 +419,18 @@ return [
         'JS_OTORGAR_PATENTE' => 'OTORGAR PATENTE (PERMANENTE)',
         'JS_DAR_UNIDADES' => 'DAR UNIDADES FÍSICAS',
         'JS_SIN_NACIONES' => 'Sin Naciones Registradas',
+        'CAT_FLOTAS' => 'FLOTAS',
+        'FLT_VACIO' => 'VACÍO',
+        'FLT_ACTIVO' => 'FLOTA ACTIVA',
+        'FLT_INSIGNIA' => 'VEHÍCULO PRINCIPAL',
+        'FLT_ESCOLTAS' => 'ESCOLTAS',
+        'FLT_DESTRUIR_ICON' => '☢️',
+        'FLT_DESTRUIR' => 'ELIMINAR FLOTA',
+        'FLT_CONFIRMAR' => '¿Confirmas eliminar esta flota y reembolsar los vehículos a su inventario?',
+        'MODAL_ANIQ_FLOTA' => 'ELIMINAR FLOTA',
+        'CONFIRM_FLOTA_DESC' => '¿Estás seguro/ra de querer eliminar esta flota? Esta acción no se puede deshacer.',
+        'BTN_FLT_CONFIRMAR' => 'SÍ, ELIMINAR',
+        'BTN_FLT_CANCELAR' => 'NO, CANCELAR',
     ],
 
     'JS_ALERTAS' => [
