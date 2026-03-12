@@ -11,7 +11,9 @@ return [
         'VOLVER_RADAR' => 'VOLVER AL INICIO',
         'MANDO_STAFF' => 'ADMINISTRACIÓN',
         'MANDO_LIDER' => 'PANEL DE EQUIPO',
-        'FOOTER_COPY' => 'Sistema de Gestión &copy; 2026 - Desarrollado por tarquitet.com',
+        'FOOTER_COPY' => 'WTSS &copy; ' . date('Y') . ' - Desarrollado por tarquitet.com',
+        'BTN_PORTAFOLIO' => 'TARQUITET.COM',
+        'BTN_COFFEE' => '¿UN CAFÉ?',
     ],
 
     'BOTONES' => [

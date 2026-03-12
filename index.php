@@ -106,8 +106,6 @@ try {
         </div>
     </main>
 
-    <footer class="p-10 text-center text-gray-400 text-[9px] uppercase font-bold tracking-[0.4em]">
-        <?php echo $txt['GLOBAL']['FOOTER_COPY']; ?>
-    </footer>
+    <?php include 'includes/footer.php'; ?>
 </body>
 </html>
