@@ -14,9 +14,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_SESSION['rol']) && $_SESSION
             $receptor_id = (int)($_POST['receptor_id'] ?? 0);
             if ($receptor_id <= 0) throw new Exception("Error: No se seleccionó un equipo rival.");
 
-            // Lo que se ofrece y se pide
-            $v_ofre = !empty($_POST['vehiculo_ofrecido_id']) ? (int)$_POST['vehiculo_ofrecido_id'] : null;
+            // Recibimos el ID exacto del inventario que seleccionó
+            $inv_ofre = !empty($_POST['inv_ofrecido_id']) ? (int)$_POST['inv_ofrecido_id'] : null;
             $cant_ofre = !empty($_POST['cantidad_ofrecida']) ? (int)$_POST['cantidad_ofrecida'] : 0;
+            
             $ofrece_d = (int)($_POST['ofrece_dinero'] ?? 0);
             $ofrece_a = (int)($_POST['ofrece_acero'] ?? 0);
             $ofrece_p = (int)($_POST['ofrece_petroleo'] ?? 0);
@@ -24,7 +25,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_SESSION['rol']) && $_SESSION
             $pide_a = (int)($_POST['requiere_acero'] ?? 0);
             $pide_p = (int)($_POST['requiere_petroleo'] ?? 0);
 
-            // 1. Validar que el Ofertante TENGA lo que está ofreciendo
+            // 1. Validar fondos
             $stmt_check = $pdo->prepare("SELECT dinero, acero, petroleo FROM cuentas WHERE id = ?");
             $stmt_check->execute([$lider_id]);
             $mis_fondos = $stmt_check->fetch(PDO::FETCH_ASSOC);
@@ -33,18 +34,30 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_SESSION['rol']) && $_SESSION
                 throw new Exception("No tienes suficientes recursos para hacer esta oferta.");
             }
 
-            // 2. RETENCIÓN (Escrow): Quitarle los recursos y el vehículo al ofertante INMEDIATAMENTE
+            // 2. RETENCIÓN MONETARIA
             $pdo->prepare("UPDATE cuentas SET dinero = dinero - ?, acero = acero - ?, petroleo = petroleo - ? WHERE id = ?")->execute([$ofrece_d, $ofrece_a, $ofrece_p, $lider_id]);
 
-            if ($v_ofre && $cant_ofre > 0) {
-                // Descontar vehículo
-                $pdo->prepare("UPDATE inventario SET cantidad = cantidad - ? WHERE cuenta_id = ? AND catalogo_id = ?")->execute([$cant_ofre, $lider_id, $v_ofre]);
-                $pdo->query("DELETE FROM inventario WHERE cantidad <= 0"); // Limpiar vacíos
+            // 3. RETENCIÓN FÍSICA (Identificando si era de Tienda o Tradeo)
+            $v_ofre = null;
+            $origen_ofre = null;
+
+            if ($inv_ofre && $cant_ofre > 0) {
+                $stmt_inv = $pdo->prepare("SELECT catalogo_id, origen, cantidad FROM inventario WHERE id = ? AND cuenta_id = ?");
+                $stmt_inv->execute([$inv_ofre, $lider_id]);
+                $inv_data = $stmt_inv->fetch(PDO::FETCH_ASSOC);
+
+                if (!$inv_data || $inv_data['cantidad'] < $cant_ofre) throw new Exception("Stock de vehículo insuficiente.");
+                
+                $v_ofre = $inv_data['catalogo_id'];
+                $origen_ofre = $inv_data['origen'];
+
+                $pdo->prepare("UPDATE inventario SET cantidad = cantidad - ? WHERE id = ?")->execute([$cant_ofre, $inv_ofre]);
+                $pdo->query("DELETE FROM inventario WHERE cantidad <= 0");
             }
 
-            // 3. Crear el contrato
-            $stmt_ins = $pdo->prepare("INSERT INTO mercado_tradeos (ofertante_id, receptor_id, vehiculo_ofrecido_id, cantidad_ofrecida, ofrece_dinero, ofrece_acero, ofrece_petroleo, cantidad_requerida, pide_dinero, pide_acero, pide_petroleo, estado) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, 'activo')");
-            $stmt_ins->execute([$lider_id, $receptor_id, $v_ofre, $cant_ofre, $ofrece_d, $ofrece_a, $ofrece_p, $pide_d, $pide_a, $pide_p]);
+            // 4. Crear contrato guardando el origen original
+            $stmt_ins = $pdo->prepare("INSERT INTO mercado_tradeos (ofertante_id, receptor_id, vehiculo_ofrecido_id, origen_vehiculo, cantidad_ofrecida, ofrece_dinero, ofrece_acero, ofrece_petroleo, cantidad_requerida, pide_dinero, pide_acero, pide_petroleo, estado) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, 'activo')");
+            $stmt_ins->execute([$lider_id, $receptor_id, $v_ofre, $origen_ofre, $cant_ofre, $ofrece_d, $ofrece_a, $ofrece_p, $pide_d, $pide_a, $pide_p]);
             
             $pdo->commit();
             header("Location: ../views/lider_inventario.php?msg=oferta_enviada"); exit();
@@ -56,7 +69,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_SESSION['rol']) && $_SESSION
             $trato = $stmt->fetch(PDO::FETCH_ASSOC);
             if (!$trato) throw new Exception("Trato no encontrado.");
 
-            // 1. Validar fondos del RECEPTOR para pagar el precio
             $stmt_check = $pdo->prepare("SELECT dinero, acero, petroleo FROM cuentas WHERE id = ?");
             $stmt_check->execute([$lider_id]);
             $mis_fondos = $stmt_check->fetch(PDO::FETCH_ASSOC);
@@ -65,22 +77,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_SESSION['rol']) && $_SESSION
                 throw new Exception("No tienes recursos suficientes para pagar este trato.");
             }
             
-            // 2. Cobrar al RECEPTOR y darle lo ofrecido
             $pdo->prepare("UPDATE cuentas SET dinero = dinero - ? + ?, acero = acero - ? + ?, petroleo = petroleo - ? + ? WHERE id = ?")
                 ->execute([$trato['pide_dinero'], $trato['ofrece_dinero'], $trato['pide_acero'], $trato['ofrece_acero'], $trato['pide_petroleo'], $trato['ofrece_petroleo'], $lider_id]);
             
-            // 3. Pagar al OFERTANTE (Solo recibe lo que pidió, porque lo que ofreció ya se le descontó antes)
             $pdo->prepare("UPDATE cuentas SET dinero = dinero + ?, acero = acero + ?, petroleo = petroleo + ? WHERE id = ?")
                 ->execute([$trato['pide_dinero'], $trato['pide_acero'], $trato['pide_petroleo'], $trato['ofertante_id']]);
 
-            // 4. Entregar el vehículo retenido al RECEPTOR
+            // ENTREGA (Obligatoriamente entra como 'tradeo' para bloquear su venta por dinero)
             if (!empty($trato['vehiculo_ofrecido_id']) && $trato['cantidad_ofrecida'] > 0) {
-                $check = $pdo->prepare("SELECT id FROM inventario WHERE cuenta_id = ? AND catalogo_id = ?");
+                $check = $pdo->prepare("SELECT id FROM inventario WHERE cuenta_id = ? AND catalogo_id = ? AND origen = 'tradeo'");
                 $check->execute([$lider_id, $trato['vehiculo_ofrecido_id']]);
                 if ($inv_id = $check->fetchColumn()) {
                     $pdo->prepare("UPDATE inventario SET cantidad = cantidad + ? WHERE id = ?")->execute([$trato['cantidad_ofrecida'], $inv_id]);
                 } else {
-                    $pdo->prepare("INSERT INTO inventario (cuenta_id, catalogo_id, cantidad) VALUES (?, ?, ?)")->execute([$lider_id, $trato['vehiculo_ofrecido_id'], $trato['cantidad_ofrecida']]);
+                    $pdo->prepare("INSERT INTO inventario (cuenta_id, catalogo_id, cantidad, origen) VALUES (?, ?, ?, 'tradeo')")->execute([$lider_id, $trato['vehiculo_ofrecido_id'], $trato['cantidad_ofrecida']]);
                 }
             }
 
@@ -97,17 +107,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_SESSION['rol']) && $_SESSION
             $trato = $stmt->fetch(PDO::FETCH_ASSOC);
             if (!$trato) throw new Exception("Operación no autorizada.");
 
-            // DEVOLVER la retención al OFERTANTE
             $pdo->prepare("UPDATE cuentas SET dinero = dinero + ?, acero = acero + ?, petroleo = petroleo + ? WHERE id = ?")
                 ->execute([$trato['ofrece_dinero'], $trato['ofrece_acero'], $trato['ofrece_petroleo'], $trato['ofertante_id']]);
             
+            // DEVOLUCIÓN: Se devuelve al ofertante con su Origen Original
             if (!empty($trato['vehiculo_ofrecido_id']) && $trato['cantidad_ofrecida'] > 0) {
-                $check = $pdo->prepare("SELECT id FROM inventario WHERE cuenta_id = ? AND catalogo_id = ?");
-                $check->execute([$trato['ofertante_id'], $trato['vehiculo_ofrecido_id']]);
+                // Si es un tradeo viejo y dice NULL, asumimos 'tienda' para salvarlo
+                $origen_orig = $trato['origen_vehiculo'] ?? 'tienda';
+                $check = $pdo->prepare("SELECT id FROM inventario WHERE cuenta_id = ? AND catalogo_id = ? AND origen = ?");
+                $check->execute([$trato['ofertante_id'], $trato['vehiculo_ofrecido_id'], $origen_orig]);
                 if ($inv_id = $check->fetchColumn()) {
                     $pdo->prepare("UPDATE inventario SET cantidad = cantidad + ? WHERE id = ?")->execute([$trato['cantidad_ofrecida'], $inv_id]);
                 } else {
-                    $pdo->prepare("INSERT INTO inventario (cuenta_id, catalogo_id, cantidad) VALUES (?, ?, ?)")->execute([$trato['ofertante_id'], $trato['vehiculo_ofrecido_id'], $trato['cantidad_ofrecida']]);
+                    $pdo->prepare("INSERT INTO inventario (cuenta_id, catalogo_id, cantidad, origen) VALUES (?, ?, ?, ?)")->execute([$trato['ofertante_id'], $trato['vehiculo_ofrecido_id'], $trato['cantidad_ofrecida'], $origen_orig]);
                 }
             }
 
@@ -121,5 +133,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_SESSION['rol']) && $_SESSION
         $pdo->rollBack(); 
         die("<div style='background:#111; color:#ef4444; padding:30px; text-align:center; font-family:monospace; border: 2px solid #ef4444;'><h2>🚨 ERROR AL PROCESAR 🚨</h2><p>" . htmlspecialchars($e->getMessage()) . "</p><br><a href='../views/lider_inventario.php' style='color:white; text-decoration:underline;'>Regresar al inventario</a></div>"); 
     }
+} else {
+    header("Location: ../login.php"); exit();
 }
 ?>

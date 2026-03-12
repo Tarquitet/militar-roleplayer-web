@@ -10,16 +10,13 @@ try {
     $stmt_mio = $pdo->prepare("SELECT * FROM cuentas WHERE id = :id");
     $stmt_mio->execute([':id' => $lider_id]);
     $user = $stmt_mio->fetch(PDO::FETCH_ASSOC);
-    // Obtener las naciones asignadas
     $naciones_base = !empty($user['naciones_activas']) ? array_map('trim', explode(',', $user['naciones_activas'])) : [];
     
-    // Obtener naciones de vehículos comprados en mercado negro que el jugador tenga en inventario
     $stmt_extra = $pdo->prepare("SELECT DISTINCT c.nacion FROM inventario i JOIN catalogo_tienda c ON i.catalogo_id = c.id WHERE i.cuenta_id = :id AND i.cantidad > 0");
     $stmt_extra->execute([':id' => $lider_id]);
     $naciones_mercado = $stmt_extra->fetchAll(PDO::FETCH_COLUMN);
 
-    // Unir ambas listas sin repetir nombres
-    $mis_naciones = array_unique(array_merge($naciones_base, $naciones_mercado));
+    $mis_naciones = array_values(array_filter(array_unique(array_merge($naciones_base, $naciones_mercado))));
 
     $stmt_tr_check = $pdo->prepare("SELECT COUNT(*) FROM mercado_tradeos WHERE (ofertante_id = :id OR receptor_id = :id) AND estado = 'activo'");
     $stmt_tr_check->execute([':id' => $lider_id]);
@@ -34,7 +31,6 @@ try {
     $reembolsos_activos = $stmt_pend->fetchAll(PDO::FETCH_ASSOC);
 
     $en_proceso = [];
-    // 1. Sumar los vehículos en solicitudes de reembolso
     foreach($reembolsos_activos as $ra) { 
         $en_proceso[$ra['inventario_id']] = ($en_proceso[$ra['inventario_id']] ?? 0) + $ra['cantidad']; 
     }
@@ -58,12 +54,18 @@ try {
         $stmt_p->execute([':id' => $lider_id]);
         $mis_planos = $stmt_p->fetchAll(PDO::FETCH_COLUMN);
 
-        $stmt_inv = $pdo->prepare("SELECT id as inv_id, catalogo_id, cantidad FROM inventario WHERE cuenta_id = :id");
+        // NUEVA LECTURA SEPARANDO ORÍGENES DE INVENTARIO
+        $stmt_inv = $pdo->prepare("SELECT id as inv_id, catalogo_id, cantidad, origen FROM inventario WHERE cuenta_id = :id");
         $stmt_inv->execute([':id' => $lider_id]);
-        foreach($stmt_inv->fetchAll(PDO::FETCH_ASSOC) as $ri) { $mi_stock[$ri['catalogo_id']] = $ri; }
+        foreach($stmt_inv->fetchAll(PDO::FETCH_ASSOC) as $ri) { 
+            $mi_stock[$ri['catalogo_id']][$ri['origen']] = $ri; 
+        }
 
         foreach($catalogo_nacional as $cn) { 
-            $mi_catalogo_js[$cn['id']] = ['nombre' => $cn['nombre_vehiculo'], 'dinero' => $cn['costo_dinero'], 'acero' => $cn['costo_acero'], 'petroleo' => $cn['costo_petroleo'], 'stock' => $mi_stock[$cn['id']]['cantidad'] ?? 0]; 
+            $s_tienda = $mi_stock[$cn['id']]['tienda']['cantidad'] ?? 0;
+            $s_tradeo = $mi_stock[$cn['id']]['tradeo']['cantidad'] ?? 0;
+            $mi_catalogo_js[$cn['id']] = ['nombre' => $cn['nombre_vehiculo'], 'dinero' => $cn['costo_dinero'], 'acero' => $cn['costo_acero'], 'petroleo' => $cn['costo_petroleo'], 'stock_total' => ($s_tienda + $s_tradeo)]; 
+            
             $tier = $cn['rango'] ?? 1;
             $tipo = $cn['tipo'] ?? 'tanque';
             $clase = !empty($cn['subtipo']) ? $cn['subtipo'] : (!empty($cn['clase']) ? $cn['clase'] : 'No Clasificado'); 
@@ -189,10 +191,20 @@ try {
                                         <h3 class="text-gray-500 font-black uppercase text-[10px] tracking-[0.2em] border-b border-gray-800 pb-2 mb-4"><?php echo $clase_nombre; ?></h3>
                                         <div class="flex gap-4 overflow-x-auto pb-4 custom-scrollbar">
                                             <?php foreach($tipos[$tipo_vehiculo][$clase_nombre] as $item): 
-                                                $inv = $mi_stock[$item['id']] ?? ['cantidad' => 0, 'inv_id' => 0];
-                                                $proc = $en_proceso[$inv['inv_id']] ?? 0;
-                                                $stock_neto = $inv['cantidad'] - $proc;
-                                                $item_json = htmlspecialchars(json_encode(array_merge($item, $inv, ['neto' => $stock_neto])), ENT_QUOTES, 'UTF-8');
+                                                
+                                                // Separar orígenes
+                                                $stock_tienda = $mi_stock[$item['id']]['tienda'] ?? null;
+                                                $stock_tradeo = $mi_stock[$item['id']]['tradeo'] ?? null;
+                                                
+                                                $proc_t = $stock_tienda ? ($en_proceso[$stock_tienda['inv_id']] ?? 0) : 0;
+                                                $proc_tr = $stock_tradeo ? ($en_proceso[$stock_tradeo['inv_id']] ?? 0) : 0;
+                                                
+                                                $neto_tienda = $stock_tienda ? ($stock_tienda['cantidad'] - $proc_t) : 0;
+                                                $neto_tradeo = $stock_tradeo ? ($stock_tradeo['cantidad'] - $proc_tr) : 0;
+                                                
+                                                $stock_total = $neto_tienda + $neto_tradeo;
+                                                $proc_total = $proc_t + $proc_tr;
+                                                
                                                 $is_premium = isset($item['is_premium']) && $item['is_premium'] == 1;
                                             ?>
                                                 <div class="fila-v flex-shrink-0 w-64 flex flex-col bg-[#111] border <?php echo $is_premium ? 'card-premium' : 'border-[#1a1a1a]'; ?> relative hover:brightness-110 transition shadow-lg" data-nacion="<?php echo $item['nacion']; ?>">
@@ -220,23 +232,39 @@ try {
                                                         <div class="mt-auto pt-2 border-t border-gray-800/50 px-1 flex justify-between items-center">
                                                             <span class="text-gray-500 text-[8px] font-black uppercase tracking-widest"><?php echo $txt['LIDER_INVENTARIO']['LBL_STOCK_LIBRE']; ?></span>
                                                             <div class="flex flex-col items-end">
-                                                                <span class="text-xl font-black <?php echo $stock_neto > 0 ? 'text-[#c5a059]' : 'text-gray-800'; ?>"><?php echo $stock_neto; ?>x</span>
-                                                                <?php if($proc > 0): ?>
-                                                                    <span class="badge-process">-<?php echo $proc; ?> <?php echo $txt['LIDER_INVENTARIO']['LBL_TRANSITO']; ?></span>
+                                                                <span class="text-xl font-black <?php echo $stock_total > 0 ? 'text-[#c5a059]' : 'text-gray-800'; ?>"><?php echo $stock_total; ?>x</span>
+                                                                <?php if($proc_total > 0): ?>
+                                                                    <span class="badge-process">-<?php echo $proc_total; ?> <?php echo $txt['LIDER_INVENTARIO']['LBL_TRANSITO']; ?></span>
                                                                 <?php endif; ?>
                                                             </div>
                                                         </div>
                                                     </div>
 
                                                     <div class="p-2 bg-black/80 border-t border-[#1a1a1a]">
-                                                        <?php if(!in_array($item['id'], $mis_planos) && $stock_neto > 0): ?>
-                                                            <button onclick='abrirModalReembolso(<?php echo $item_json; ?>)' class="btn-m w-full !py-2.5 !text-[9px] !bg-purple-900/20 !text-purple-400 border-purple-900 font-black uppercase hover:bg-purple-700 hover:text-white transition tracking-widest"><?php echo $txt['LIDER_INVENTARIO']['BTN_IMPORTADO']; ?></button>
-                                                        <?php elseif(!in_array($item['id'], $mis_planos)): ?>
+                                                        <?php if(!in_array($item['id'], $mis_planos)): ?>
                                                             <div class="py-2.5 text-center text-[9px] text-red-600 font-black uppercase border border-red-900/30 bg-red-950/10"><?php echo $txt['LIDER_INVENTARIO']['BTN_REQ_PATENTE']; ?></div>
-                                                        <?php elseif($stock_neto <= 0): ?>
-                                                            <div class="py-2.5 text-center text-[9px] text-gray-700 font-black uppercase border border-white/5"><?php echo $txt['LIDER_INVENTARIO']['BTN_SIN_ACTIVOS']; ?></div>
                                                         <?php else: ?>
-                                                            <button onclick='abrirModalReembolso(<?php echo $item_json; ?>)' class="btn-m w-full !py-2.5 !text-[9px] !bg-red-950/30 !text-red-500 border-red-900 font-black uppercase hover:bg-red-700 transition"><?php echo $txt['LIDER_INVENTARIO']['BTN_DEVOLVER']; ?></button>
+                                                            
+                                                            <?php if($neto_tienda > 0): 
+                                                                $json_tienda = htmlspecialchars(json_encode(array_merge($item, $stock_tienda, ['neto' => $neto_tienda])), ENT_QUOTES, 'UTF-8');
+                                                            ?>
+                                                                <button onclick='abrirModalReembolso(<?php echo $json_tienda; ?>)' class="btn-m w-full !py-1.5 !mb-1 !text-[8px] !bg-red-950/30 !text-red-500 border-red-900 font-black uppercase hover:bg-red-700 hover:text-white transition tracking-widest">
+                                                                    <?php echo $txt['LIDER_INVENTARIO']['BTN_DEVOLVER']; ?> TIENDA (<?php echo $neto_tienda; ?>)
+                                                                </button>
+                                                            <?php endif; ?>
+
+                                                            <?php if($neto_tradeo > 0): 
+                                                                $json_tradeo = htmlspecialchars(json_encode(array_merge($item, $stock_tradeo, ['neto' => $neto_tradeo])), ENT_QUOTES, 'UTF-8');
+                                                            ?>
+                                                                <button onclick='abrirModalAnularTradeo(<?php echo $json_tradeo; ?>)' class="btn-m w-full !py-1.5 !text-[8px] !bg-yellow-950/30 !text-yellow-500 border-yellow-900 font-black uppercase hover:bg-yellow-700 hover:text-black transition tracking-widest">
+                                                                    SOLICITAR ANULAR TRADEO (<?php echo $neto_tradeo; ?>)
+                                                                </button>
+                                                            <?php endif; ?>
+
+                                                            <?php if($neto_tienda <= 0 && $neto_tradeo <= 0): ?>
+                                                                <div class="py-2.5 text-center text-[9px] text-gray-700 font-black uppercase border border-white/5"><?php echo $txt['LIDER_INVENTARIO']['BTN_SIN_ACTIVOS']; ?></div>
+                                                            <?php endif; ?>
+
                                                         <?php endif; ?>
                                                     </div>
                                                 </div>
@@ -329,7 +357,34 @@ try {
     </div>
 
     <div id="modalHistorial" class="hidden fixed inset-0 bg-black/95 z-[100] flex items-center justify-center p-4"><div class="m-panel w-full max-w-2xl border-red-800 bg-[#0d0e0a] p-10 relative shadow-2xl"><button onclick="cerrarModal('modalHistorial')" class="btn-close-modal">&times;</button><h2 class="text-red-500 font-black text-center text-[10px] uppercase mb-8 border-b border-red-900/50 pb-2 tracking-widest"><?php echo $txt['LIDER_INVENTARIO']['MODAL_PETICIONES_TIT']; ?></h2><div class="space-y-4 max-h-[50vh] overflow-y-auto pr-2"><?php if(empty($reembolsos_activos)): ?><p class="text-center text-gray-600 uppercase font-black text-xs py-10"><?php echo $txt['LIDER_INVENTARIO']['MSG_SIN_PETICIONES']; ?></p><?php else: foreach($reembolsos_activos as $ra): ?><div class="flex justify-between items-center bg-black/40 p-4 border border-white/5 group hover:border-red-900 transition"><div><span class="text-white font-black uppercase text-sm"><?php echo htmlspecialchars($ra['nombre_vehiculo']); ?></span><span class="text-red-500 font-black ml-4">x<?php echo $ra['cantidad']; ?></span></div><form action="../logic/cancelar_reembolso.php" method="POST"><input type="hidden" name="id" value="<?php echo $ra['id']; ?>"><button type="submit" class="bg-red-900/20 text-red-500 border border-red-900 px-5 py-2 text-[9px] font-black uppercase hover:bg-red-700 hover:text-white transition"><?php echo $txt['LIDER_INVENTARIO']['BTN_CANCELAR']; ?></button></form></div><?php endforeach; endif; ?></div></div></div>
+    
     <div id="modalReembolso" class="hidden fixed inset-0 bg-black/95 z-[100] flex items-center justify-center p-4"><div class="m-panel w-full max-w-md border-red-800 bg-[#0d0e0a] p-10 shadow-2xl relative"><button onclick="cerrarModal('modalReembolso')" class="btn-close-modal">&times;</button><h2 class="text-red-500 font-black text-center text-[10px] uppercase mb-10 border-b border-red-900/50 pb-2 tracking-widest"><?php echo $txt['LIDER_INVENTARIO']['MODAL_REEMBOLSO_TIT']; ?></h2><form action="../logic/solicitar_reembolso.php" method="POST"><input type="hidden" id="re_inv_id" name="inventario_id"><div class="text-center mb-8"><span id="re_nombre" class="text-white font-black uppercase text-2xl"></span></div><div class="mb-4 text-center"><label class="stat-label block mb-2"><?php echo $txt['LIDER_INVENTARIO']['LBL_CANT_DISP']; ?> <span id="re_max_display" class="text-white"></span></label><input type="number" id="re_qty" name="cantidad" value="1" min="1" oninput="calcReMath()" class="f-input !text-4xl py-6 text-center font-black"></div><div id="re_stock_error" class="hidden text-red-500 text-[10px] font-black uppercase text-center mb-6 animate-pulse"><?php echo $txt['LIDER_INVENTARIO']['ERR_CANT_SUPERA']; ?></div><div class="bg-red-950/20 p-6 border border-red-900/30 text-center mb-10"><div class="flex justify-around font-black font-mono"><div><span class="stat-label !mb-1"><?php echo $txt['LIDER_INVENTARIO']['LBL_CASH']; ?></span><span id="re_res_d" class="text-green-500 text-xl">$0</span></div><div><span class="stat-label !mb-1"><?php echo $txt['LIDER_INVENTARIO']['LBL_STEEL']; ?></span><span id="re_res_a" class="text-white text-xl">0T</span></div><div><span class="stat-label !mb-1"><?php echo $txt['LIDER_INVENTARIO']['LBL_FUEL']; ?></span><span id="re_res_p" class="text-yellow-500 text-xl">0L</span></div></div></div><button type="submit" id="btnEnviarRe" class="btn-m w-full py-5 !bg-red-700 !text-white border-red-500 font-black uppercase"><?php echo $txt['LIDER_INVENTARIO']['BTN_ENVIAR_PETICION']; ?></button></form></div></div>
+    
+    <div id="modalAnularTradeo" class="hidden fixed inset-0 bg-black/95 z-[100] flex items-center justify-center p-4">
+        <div class="m-panel w-full max-w-md border-yellow-800 bg-[#0d0e0a] p-10 shadow-2xl relative">
+            <button onclick="cerrarModal('modalAnularTradeo')" class="btn-close-modal">&times;</button>
+            <h2 class="text-yellow-500 font-black text-center text-[10px] uppercase mb-6 border-b border-yellow-900/50 pb-2 tracking-widest">SOLICITAR REVERSIÓN DE TRADEO</h2>
+            
+            <div class="bg-yellow-950/20 border border-yellow-900/50 p-4 mb-6 text-center text-[9px] text-yellow-600 font-bold uppercase">
+                ⚠️ Al devolver un vehículo obtenido por Tradeo, NO recibirás dinero. El Staff revertirá el trato original y devolverá los fondos a sus dueños.
+            </div>
+
+            <form action="../logic/solicitar_reembolso.php" method="POST">
+                <input type="hidden" id="anular_inv_id" name="inventario_id">
+                <input type="hidden" name="es_tradeo" value="1">
+                
+                <div class="text-center mb-8"><span id="anular_nombre" class="text-white font-black uppercase text-2xl font-['Cinzel']"></span></div>
+                
+                <div class="mb-4 text-center">
+                    <label class="stat-label block mb-2">UNIDADES A DEVOLVER <span id="anular_max_display" class="text-white"></span></label>
+                    <input type="number" id="anular_qty" name="cantidad" value="1" min="1" class="f-input !text-4xl py-6 text-center font-black !text-yellow-500 !border-yellow-900">
+                </div>
+                
+                <button type="submit" class="btn-m w-full py-5 mt-6 !bg-yellow-600 !text-black border-yellow-500 uppercase font-black tracking-widest hover:bg-yellow-500 transition">ENVIAR PETICIÓN AL STAFF</button>
+            </form>
+        </div>
+    </div>
+
     <div id="modalError" class="hidden fixed inset-0 bg-black/98 z-[300] flex items-center justify-center p-4"><div class="m-panel w-full max-w-sm border-red-600 bg-[#120505] p-10 text-center shadow-2xl relative"><button onclick="cerrarModal('modalError')" class="btn-close-modal">&times;</button><div class="text-red-500 text-5xl mb-6">⚠️</div><h3 class="text-white font-black uppercase tracking-widest mb-4"><?php echo $txt['LIDER_INVENTARIO']['MODAL_ERROR_TIT']; ?></h3><p id="error_msg_text" class="text-gray-400 text-xs uppercase font-bold mb-8 leading-relaxed"></p><button onclick="cerrarModal('modalError')" class="btn-m w-full !bg-red-900/20 !border-red-600 !text-red-500 py-3 font-black uppercase"><?php echo $txt['LIDER_INVENTARIO']['BTN_ENTENDIDO']; ?></button></div></div>
 
     <div id="modalConfirmarAceptacion" class="hidden fixed inset-0 bg-black/98 z-[400] flex items-center justify-center p-4 backdrop-blur-sm">
@@ -381,9 +436,28 @@ try {
                         <div id="sec_vehiculo" class="bg-black/40 p-5 border border-white/5 mt-4">
                             <label class="stat-label block mb-3 text-blue-400"><?php echo $txt['LIDER_INVENTARIO']['LBL_TRANSFERIR_VEH']; ?></label>
                             <div class="flex gap-4 items-center">
-                                <select name="vehiculo_ofrecido_id" id="select_mio" onchange="actualizarOfertaMio()" class="f-input !text-[11px] flex-grow !p-3 font-black uppercase">
-                                    <option value=""><?php echo $txt['LIDER_INVENTARIO']['OPT_NINGUNO']; ?></option>
-                                    <?php foreach($mi_catalogo_js as $id => $d): if($d['stock'] > 0): ?><option value="<?php echo $id; ?>"><?php echo htmlspecialchars($d['nombre']); ?> (<?php echo $d['stock']; ?>x <?php echo $txt['LIDER_INVENTARIO']['LBL_DISP']; ?>)</option><?php endif; endforeach; ?>
+                                <select name="inv_ofrecido_id" id="select_mio" onchange="actualizarOfertaMio()" class="f-input !text-[11px] flex-grow !p-3 font-black uppercase">
+                                    <option value="" data-d="0" data-a="0" data-p="0" data-stock="0"><?php echo $txt['LIDER_INVENTARIO']['OPT_NINGUNO']; ?></option>
+                                    <?php 
+                                    // Iteramos sobre mi stock real para que elijan si dan el de Tienda o el de Tradeo
+                                    foreach($mi_stock as $cat_id => $origenes):
+                                        foreach($origenes as $origen => $data):
+                                            if($data['cantidad'] > 0):
+                                                $veh_info = $mi_catalogo_js[$cat_id];
+                                                $label_origen = $origen === 'tienda' ? 'TIENDA' : 'TRADEO';
+                                    ?>
+                                        <option value="<?php echo $data['inv_id']; ?>" 
+                                                data-d="<?php echo $veh_info['dinero']; ?>" 
+                                                data-a="<?php echo $veh_info['acero']; ?>" 
+                                                data-p="<?php echo $veh_info['petroleo']; ?>"
+                                                data-stock="<?php echo $data['cantidad']; ?>">
+                                            <?php echo htmlspecialchars($veh_info['nombre']); ?> (<?php echo $data['cantidad']; ?>x - Origen: <?php echo $label_origen; ?>)
+                                        </option>
+                                    <?php 
+                                            endif;
+                                        endforeach;
+                                    endforeach; 
+                                    ?>
                                 </select>
                             </div>
                             <div id="mio_extra" class="hidden mt-4 bg-[#0a0a0a] border border-gray-800 p-4">
@@ -480,7 +554,6 @@ try {
                 document.getElementById('cont_hangar').style.display = 'none'; 
                 document.getElementById('cont_flotas').classList.remove('hidden'); 
                 
-                // APAGAR los botones de naciones porque las flotas son GLOBALES
                 document.querySelectorAll('.tab-nacion').forEach(b => {
                     b.style.opacity = '0.2';
                     b.style.pointerEvents = 'none';
@@ -491,7 +564,6 @@ try {
                 document.getElementById('cont_hangar').style.display = 'block'; 
                 document.getElementById('cont_flotas').classList.add('hidden'); 
                 
-                // ENCENDER los botones de naciones al volver al hangar
                 document.querySelectorAll('.tab-nacion').forEach(b => {
                     b.style.opacity = '1';
                     b.style.pointerEvents = 'auto';
@@ -528,7 +600,9 @@ try {
             update('bal_d', resActual.d, offD, '$'); update('bal_a', resActual.a, offA, 'T'); update('bal_p', resActual.p, offP, 'L');
         }
 
-        function abrirModalReembolso(i) { itemReSel = i; document.getElementById('re_nombre').innerText = i.nombre_vehiculo; document.getElementById('re_max_display').innerText = i.neto + " <?php echo $txt['LIDER_INVENTARIO']['LBL_UNIDADES_LIBRES']; ?>"; document.getElementById('re_inv_id').value = i.inv_id; document.getElementById('re_qty').value = 1; calcReMath(); abrirModal('modalReembolso'); }
+        function abrirModalReembolso(i) { itemReSel = i; document.getElementById('re_nombre').innerText = i.nombre_vehiculo; document.getElementById('re_max_display').innerText = i.neto + " <?php echo $txt['LIDER_INVENTARIO']['LBL_UNIDADES_LIBRES']; ?>"; document.getElementById('re_inv_id').value = i.inv_id; document.getElementById('re_qty').max = i.neto; document.getElementById('re_qty').value = 1; calcReMath(); abrirModal('modalReembolso'); }
+        function abrirModalAnularTradeo(i) { document.getElementById('anular_nombre').innerText = i.nombre_vehiculo; document.getElementById('anular_max_display').innerText = "(Max: " + i.neto + ")"; document.getElementById('anular_inv_id').value = i.inv_id; document.getElementById('anular_qty').max = i.neto; document.getElementById('anular_qty').value = 1; abrirModal('modalAnularTradeo'); }
+
         function calcReMath() { const input = document.getElementById('re_qty'), q = parseInt(input.value) || 0, btn = document.getElementById('btnEnviarRe'), err = document.getElementById('re_stock_error'); if(q > itemReSel.neto) { input.classList.add('input-error'); btn.disabled = true; btn.style.opacity = '0.3'; err.classList.remove('hidden'); } else { input.classList.remove('input-error'); btn.disabled = false; btn.style.opacity = '1'; err.classList.add('hidden'); } document.getElementById('re_res_d').innerText = '$'+(q * itemReSel.costo_dinero).toLocaleString(); document.getElementById('re_res_a').innerText = (q * itemReSel.costo_acero).toLocaleString()+'T'; document.getElementById('re_res_p').innerText = (q * itemReSel.costo_petroleo).toLocaleString()+'L'; }
         
         function subTabMercado(s) {
@@ -589,10 +663,12 @@ try {
         function seleccionarRival(r) { rSel = r; document.querySelectorAll('.btn-rival-selector').forEach(b => { b.classList.remove('active', 'border-blue-500', 'bg-blue-900/20'); b.classList.add('border-gray-800', 'bg-[#0a0a0a]'); }); const btn = document.getElementById('btn-rival-'+r.id); btn.classList.remove('border-gray-800', 'bg-[#0a0a0a]'); btn.classList.add('active', 'border-blue-500', 'bg-blue-900/20'); document.getElementById('t_receptor_id').value = r.id; document.getElementById('rival_seleccionado_box').classList.remove('hidden'); document.getElementById('rival_seleccionado_txt').innerText = r.nombre_equipo; const btnEnviar = document.getElementById('btn_enviar_trato'); btnEnviar.disabled = false; btnEnviar.classList.remove('!bg-gray-800', '!text-gray-500', 'border-gray-600', 'cursor-not-allowed'); btnEnviar.classList.add('!bg-blue-600', '!text-white', '!border-blue-400'); btnEnviar.innerText = "<?php echo $txt['LIDER_INVENTARIO']['BTN_ENVIAR_PROPUESTA']; ?>"; }
         
         function actualizarOfertaMio() { 
-            const id = document.getElementById('select_mio').value; 
-            if(id && miHangarPrecios[id]) { 
+            const sel = document.getElementById('select_mio');
+            const opt = sel.options[sel.selectedIndex];
+            
+            if(sel.value !== "") { 
                 document.getElementById('mio_extra').classList.remove('hidden'); 
-                document.getElementById('ofre_qty').max = miHangarPrecios[id].stock; 
+                document.getElementById('ofre_qty').max = parseInt(opt.dataset.stock); 
                 document.getElementById('ofre_qty').value = 1; 
                 multiValMio(); 
             } else {
@@ -601,16 +677,18 @@ try {
         }
         
         function multiValMio() { 
-            const id = document.getElementById('select_mio').value; 
+            const sel = document.getElementById('select_mio');
+            const opt = sel.options[sel.selectedIndex];
             const q = parseInt(document.getElementById('ofre_qty').value) || 0; 
+            const max = parseInt(opt.dataset.stock) || 0;
             
-            if(q > miHangarPrecios[id].stock) {
-                document.getElementById('ofre_qty').value = miHangarPrecios[id].stock;
+            if(q > max) {
+                document.getElementById('ofre_qty').value = max;
             }
 
-            if(id && miHangarPrecios[id]) { 
-                const d = miHangarPrecios[id]; 
-                const unitario = `<span class='text-gray-500 block text-[8px] mb-1'><?php echo $txt['LIDER_INVENTARIO']['LBL_UNITARIO']; ?> $${parseInt(d.dinero).toLocaleString()} | ${parseInt(d.acero).toLocaleString()}T | ${parseInt(d.petroleo).toLocaleString()}L</span>`;
+            if(sel.value !== "") { 
+                const d = { dinero: parseInt(opt.dataset.d), acero: parseInt(opt.dataset.a), petroleo: parseInt(opt.dataset.p) };
+                const unitario = `<span class='text-gray-500 block text-[8px] mb-1'><?php echo $txt['LIDER_INVENTARIO']['LBL_UNITARIO']; ?> $${d.dinero.toLocaleString()} | ${d.acero.toLocaleString()}T | ${d.petroleo.toLocaleString()}L</span>`;
                 const total = `<div><span class='text-green-500'>$${(q * d.dinero).toLocaleString()}</span> <span class='text-white ml-2'>${(q * d.acero).toLocaleString()}T</span> <span class='text-yellow-500 ml-2'>${(q * d.petroleo).toLocaleString()}L</span></div>`;
                 
                 document.getElementById('mio_valor').innerHTML = `<div class='flex flex-col items-end'>${unitario}${total}</div>`; 
