@@ -619,16 +619,32 @@ try {
             document.querySelectorAll('.tier-container').forEach(tier => {
                 let tierVisible = false;
                 tier.querySelectorAll('.seccion-tipo').forEach(sec => {
+                    // Verificamos si estamos en la pestaña Tanques, Aviones o Flotas
                     if (sec.dataset.tipo === (typeof tipoActual !== 'undefined' ? tipoActual : 'tanque')) {
                         sec.style.display = 'block';
+                        
                         sec.querySelectorAll('.clase-container').forEach(clase => {
-                            const items = Array.from(clase.querySelectorAll('.fila-v')).filter(i => i.dataset.nacion === nacActual);
-                            clase.style.display = items.length > 0 ? 'block' : 'none';
-                            items.forEach(i => i.style.display = 'flex');
-                            if (items.length > 0) tierVisible = true;
+                            let hayElementos = false;
+                            
+                            // 🔥 LA CORRECCIÓN: Filtrado estricto por Nación
+                            clase.querySelectorAll('.fila-v').forEach(item => {
+                                if (item.dataset.nacion === nacActual) {
+                                    item.style.display = 'flex'; // Mostramos el de la nación seleccionada
+                                    hayElementos = true;
+                                    tierVisible = true;
+                                } else {
+                                    item.style.display = 'none'; // Ocultamos los de las demás naciones
+                                }
+                            });
+                            
+                            // Si no quedó ningún vehículo visible en esta clase, ocultamos el título de la clase
+                            clase.style.display = hayElementos ? 'block' : 'none';
                         });
-                    } else sec.style.display = 'none';
+                    } else {
+                        sec.style.display = 'none'; // Ocultamos si no es el tipo de vehículo actual
+                    }
                 });
+                
                 tier.style.display = tierVisible ? 'block' : 'none';
                 if(tierVisible) total++;
             });
