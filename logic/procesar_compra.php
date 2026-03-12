@@ -60,6 +60,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['catalogo_id'])) {
     } catch (Exception $e) {
         $pdo->rollBack();
         // Redirigir con error para que el líder sepa qué pasó
-        die($txt['LOGIC']['ERR_CADENA_SUMINISTRO'] . $e->getMessage());
+        //die($txt['LOGIC']['ERR_CADENA_SUMINISTRO'] . $e->getMessage());
+        header("Location: ../views/lider_tienda.php?error=" . urlencode($e->getMessage()));
+        exit();
     }
 }

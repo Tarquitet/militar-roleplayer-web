@@ -332,6 +332,16 @@ try {
         </div>
     </div>
 
+    <div id="modalError" class="hidden fixed inset-0 bg-black/98 z-[300] flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="m-panel w-full max-w-sm border-red-600 bg-[#120505] p-10 text-center shadow-2xl relative">
+            <button onclick="document.getElementById('modalError').classList.add('hidden')" class="btn-close-modal absolute top-4 right-4 text-gray-500 hover:text-white">&times;</button>
+            <div class="text-red-500 text-5xl mb-6">⚠️</div>
+            <h3 class="text-white font-black uppercase tracking-widest mb-4"><?php echo $txt['LOGIC']['ERR_CADENA_SUMINISTRO']; ?></h3>
+            <p id="error_msg_text" class="text-gray-400 text-xs uppercase font-bold mb-8 leading-relaxed"></p>
+            <button onclick="document.getElementById('modalError').classList.add('hidden')" class="btn-m w-full !bg-red-900/20 !border-red-600 !text-red-500 py-3 font-black uppercase hover:bg-red-600 hover:text-white transition">ENTENDIDO</button>
+        </div>
+    </div>
+
     <script>
         const urlParams = new URLSearchParams(window.location.search);
         let nacActual = urlParams.get('nacion') || '<?php echo $naciones_mando[0] ?? ""; ?>';
@@ -444,6 +454,31 @@ try {
         window.addEventListener('DOMContentLoaded', () => {
             actualizarSubtiposLider();
         });
+
+        window.addEventListener('DOMContentLoaded', () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const error = urlParams.get('error');
+        
+        if (error) {
+            let mensajeTexto = "Ha ocurrido un error en la transacción."; // Mensaje por defecto
+            
+            // Traducimos el código de error a un texto militar legible
+            if (error === 'sin_fondos') {
+                mensajeTexto = "FONDOS INSUFICIENTES. No tienes el Dinero, Acero o Petróleo necesario para completar esta compra masiva.";
+            } else if (error === 'activo_no_encontrado') {
+                mensajeTexto = "El vehículo solicitado ya no se encuentra disponible en el catálogo de la tienda.";
+            } else {
+                mensajeTexto = decodeURIComponent(error.replace(/\+/g, ' '));
+            }
+            
+            // Insertamos el texto y mostramos el modal
+            document.getElementById('error_msg_text').innerText = mensajeTexto;
+            document.getElementById('modalError').classList.remove('hidden');
+            
+            // Borramos el error de la URL para que no vuelva a saltar si el jugador presiona F5
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    });
     </script>
 </body>
 </html>
