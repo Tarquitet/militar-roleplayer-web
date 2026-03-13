@@ -290,7 +290,7 @@ try {
                     </div>
                     <div>
                         <label class="tactical-label"><?php echo $txt['STAFF_DASHBOARD']['LBL_ID_ACCESO']; ?></label>
-                        <input type="text" name="username" id="edit_username" class="terminal-input text-yellow-500/40" readonly>
+                        <input type="text" name="username" id="edit_username" class="terminal-input text-yellow-500/40">
                     </div>
                 </div>
 
