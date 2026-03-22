@@ -75,7 +75,7 @@ try {
     }
 
     $orden_tanques = ['Ligero', 'Mediano', 'Pesado', 'Caza Tanques', 'AAA'];
-    $orden_aviones = ['Caza', 'Interceptor', 'Avion de Ataque', 'Bombardero'];
+    $orden_aviones = ['Caza', 'Interceptor', 'Avion de Ataque', 'Bombardero en Picado', 'Bombardero de Pimera Línea'];
 
     $stmt_rivales = $pdo->prepare("SELECT id, nombre_equipo, bandera_url, naciones_activas FROM cuentas WHERE rol = 'lider' AND id != :id ORDER BY nombre_equipo ASC");
     $stmt_rivales->execute([':id' => $lider_id]);

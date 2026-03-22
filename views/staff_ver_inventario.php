@@ -71,7 +71,7 @@ try {
     }
 
     $orden_tanques = ['Ligero', 'Mediano', 'Pesado', 'Caza Tanques', 'AAA'];
-    $orden_aviones = ['Caza', 'Interceptor', 'Avion de Ataque', 'Bombardero'];
+    $orden_aviones = ['Caza', 'Interceptor', 'Avion de Ataque', 'Bombardero en Picado', 'Bombardero de Pimera Línea'];
 
 } catch (PDOException $e) { die("Fallo: " . $e->getMessage()); }
 ?>

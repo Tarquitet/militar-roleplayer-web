@@ -51,7 +51,7 @@ try {
 
     // JERARQUÍA DE ORDENAMIENTO (ORDEN SOLICITADO)
     $orden_tanques = ['Ligero', 'Mediano', 'Pesado', 'Caza Tanques', 'AAA'];
-    $orden_aviones = ['Caza', 'Interceptor', 'Avion de Ataque', 'Bombardero'];
+    $orden_aviones = ['Caza', 'Interceptor', 'Avion de Ataque', 'Bombardero en Picado', 'Bombardero de Pimera Línea'];
 
 } catch (PDOException $e) { die("Error: " . $e->getMessage()); }
 ?>
@@ -428,7 +428,7 @@ try {
             const selectSubtipo = document.getElementById('lider_subtipo_v');
             selectSubtipo.innerHTML = '';
             
-            let opciones = tipo === 'tanque' ? ['Ligero', 'AAA', 'Mediano', 'Pesado', 'Caza Tanques'] : ['Caza', 'Interceptor', 'Bombardero', 'Avion de Ataque'];
+            let opciones = tipo === 'tanque' ? ['Ligero', 'AAA', 'Mediano', 'Pesado', 'Caza Tanques'] : ['Caza', 'Interceptor', 'Bombardero en Picado', 'Avion de Ataque'];
             opciones.forEach(opcion => selectSubtipo.add(new Option(opcion, opcion)));
 
             // Tras cargar las subclases, forzamos la actualización del precio visual

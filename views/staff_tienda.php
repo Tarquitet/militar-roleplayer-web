@@ -31,7 +31,7 @@ try {
     }
 
     $orden_tanques = ['Ligero', 'Mediano', 'Pesado', 'Caza Tanques', 'AAA'];
-    $orden_aviones = ['Caza', 'Interceptor', 'Avion de Ataque', 'Bombardero'];
+    $orden_aviones = ['Caza', 'Interceptor', 'Avion de Ataque', 'Bombardero en Picado', 'Bombardero de Pimera Línea'];
 
 } catch (PDOException $e) {
     die("Fallo de enlace con el catálogo: " . $e->getMessage());
@@ -406,7 +406,7 @@ try {
         
         // Variables globales necesarias para que los modales no fallen
         const opsTanques = ['Ligero', 'Mediano', 'Pesado', 'Caza Tanques', 'AAA'];
-        const opsAviones = ['Caza', 'Interceptor', 'Avion de Ataque', 'Bombardero'];
+        const opsAviones = ['Caza', 'Interceptor', 'Avion de Ataque', 'Bombardero en Picado'];
         
         let filtroTipoActual = 'tanque';
         let filtroNacionActual = todasLasNaciones.length > 0 ? todasLasNaciones[0] : '';

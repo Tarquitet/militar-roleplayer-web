@@ -414,7 +414,58 @@ return array (
         'petroleo' => 1400,
       ),
     ),
-    'Bombardero' => 
+    'Bombardero en Picado' => 
+    array (
+      1 => 
+      array (
+        'dinero' => 400,
+        'acero' => 200,
+        'petroleo' => 50,
+      ),
+      2 => 
+      array (
+        'dinero' => 900,
+        'acero' => 450,
+        'petroleo' => 100,
+      ),
+      3 => 
+      array (
+        'dinero' => 1800,
+        'acero' => 900,
+        'petroleo' => 180,
+      ),
+      4 => 
+      array (
+        'dinero' => 4000,
+        'acero' => 2200,
+        'petroleo' => 250,
+      ),
+      5 => 
+      array (
+        'dinero' => 7500,
+        'acero' => 4000,
+        'petroleo' => 380,
+      ),
+      6 => 
+      array (
+        'dinero' => 13000,
+        'acero' => 6500,
+        'petroleo' => 550,
+      ),
+      7 => 
+      array (
+        'dinero' => 20000,
+        'acero' => 9500,
+        'petroleo' => 800,
+      ),
+      8 => 
+      array (
+        'dinero' => 30000,
+        'acero' => 14000,
+        'petroleo' => 1200,
+      ),
+    ),
+    'Bombardero de Primera Línea' => 
     array (
       1 => 
       array (
