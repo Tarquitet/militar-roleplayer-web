@@ -406,7 +406,7 @@ try {
         
         // Variables globales necesarias para que los modales no fallen
         const opsTanques = ['Ligero', 'Mediano', 'Pesado', 'Caza Tanques', 'AAA'];
-        const opsAviones = ['Caza', 'Interceptor', 'Avion de Ataque', 'Bombardero en Picado'];
+        const opsAviones = ['Caza', 'Interceptor', 'Avion de Ataque', 'Bombardero en Picado', 'Bombardero de Pimera Línea'];
         
         let filtroTipoActual = 'tanque';
         let filtroNacionActual = todasLasNaciones.length > 0 ? todasLasNaciones[0] : '';
