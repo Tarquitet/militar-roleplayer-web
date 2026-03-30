@@ -264,17 +264,19 @@ try {
                 </table>
             </div>
         </section>
-        <section class="mt-20 border-t border-red-900/30 pt-10">
-            <div class="m-panel bg-red-950/5 border-red-900/20 p-8 flex justify-between items-center shadow-[inset_0_0_20px_rgba(220,38,38,0.05)]">
-                <div>
-                    <h3 class="text-red-500 font-black uppercase tracking-[0.3em] mb-1 font-['Cinzel']"><?php echo $txt['STAFF_DASHBOARD']['MODAL_NUKE_TITULO']; ?></h3>
-                    <p class="text-[10px] text-gray-500 uppercase font-bold tracking-widest"><?php echo $txt['STAFF_DASHBOARD']['MODAL_NUKE_DESC']; ?></p>
+        <?php if($_SESSION['username'] === 'soshy'): ?>
+            <section class="mt-20 border-t border-red-900/30 pt-10">
+                <div class="m-panel bg-red-950/5 border-red-900/20 p-8 flex justify-between items-center shadow-[inset_0_0_20px_rgba(220,38,38,0.05)]">
+                    <div>
+                        <h3 class="text-red-500 font-black uppercase tracking-[0.3em] mb-1 font-['Cinzel']"><?php echo $txt['STAFF_DASHBOARD']['MODAL_NUKE_TITULO']; ?></h3>
+                        <p class="text-[10px] text-gray-500 uppercase font-bold tracking-widest"><?php echo $txt['STAFF_DASHBOARD']['MODAL_NUKE_DESC']; ?></p>
+                    </div>
+                    <button onclick="abrirModal('modalNuke')" class="bg-red-600 text-black px-10 py-4 font-black uppercase text-[11px] hover:bg-red-500 transition shadow-[0_0_30px_rgba(220,38,38,0.2)]">
+                        <?php echo $txt['STAFF_DASHBOARD']['BTN_NUKE']; ?>
+                    </button>
                 </div>
-                <button onclick="abrirModal('modalNuke')" class="bg-red-600 text-black px-10 py-4 font-black uppercase text-[11px] hover:bg-red-500 transition shadow-[0_0_30px_rgba(220,38,38,0.2)]">
-                    <?php echo $txt['STAFF_DASHBOARD']['BTN_NUKE']; ?>
-                </button>
-            </div>
-        </section>
+            </section>
+        <?php endif; ?>
     </main>
 
     <div id="modalEdit" class="hidden fixed inset-0 bg-black/95 z-[200] flex items-center justify-center p-4">
@@ -379,6 +381,7 @@ try {
         </div>
     </div>
 
+    <?php if($_SESSION['username'] === 'soshy'): ?>
     <div id="modalNuke" class="hidden fixed inset-0 bg-black/98 z-[500] flex items-center justify-center p-4 backdrop-blur-md">
         <div class="m-panel w-full max-w-lg border-red-600 bg-[#0a0a0a] p-10 text-center relative shadow-2xl">
             <div class="text-red-600 text-6xl mb-6 animate-pulse">☢️</div>
@@ -420,6 +423,7 @@ try {
             </form>
         </div>
     </div>
+    <?php endif; ?>
 
     <div id="modalRevertir" class="hidden fixed inset-0 bg-black/98 z-[400] flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="m-panel w-full max-w-lg border-red-600 bg-[#0a0a0a] p-8 relative shadow-2xl">
