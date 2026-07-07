@@ -1,3 +1,5 @@
+# I'm not interested to maintaining this proyect anymore. Good Look.
+
 # 🎖️ GLOBAL FACTION RADAR
 
 ### Tactical Management System for War Thunder Soshy's Server
